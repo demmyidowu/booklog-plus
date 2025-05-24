@@ -36,7 +36,7 @@ def build_prompt_from_data(entries):
     for book in entries:
         reflections.append(f"{book['book_name']} by {book['author_name']}. I enjoyed the book because it made me reflect on {book['lesson']}")
         
-    prompt = f"You're a lifelong librarian that's the best at giving book recomendations.\nI enjoy books like:\n {reflections}\n Recomend 3 books I might enjoy based of that and give a short explaination why"
+    prompt = f"You are a lifelong librarian known for giving spot-on book recommendations. You love helping readers find books that match their taste, tone, and interests.\nHere's a list of books or personal reflections on books I’ve enjoyed:\n {reflections}\n Based on that, recommend 3 books I might enjoy next. For each recommendation, include a short explanation (1–2 sentences) of why you picked it — connect it to themes, writing style, emotional tone, or authorship that align with my past favorites.\nKeep your tone warm, conversational, and insightful — like you’re chatting with a curious reader at the front desk."
     
     return prompt
     

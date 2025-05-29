@@ -4,6 +4,7 @@ from core.logic import load_book_entries,save_book_entry
 from api.rec_engine import get_recommendations
 from flask import Flask, request, jsonify
 from core.logic import save_book_entry, load_book_entries
+from data.schema import BooksSchema, ValidationError
 
 app = Flask(__name__)
 
@@ -23,20 +24,39 @@ def main():
 
 @app.route("/add", methods=["POST"])        
 def add_book():
-    data = request.get_json()
-    save_book_entry(data)
-    return jsonify({"message": "Book saved successfully!"})
+    try:
+        data = request.get_json()
+        
+        schema = BooksSchema()
+        validated = schema.load(data)
+        
+        save_book_entry(validated)
+        return jsonify({"message" : "Book saved successfully!"}), 200
+    except ValidationError as err:
+        return jsonify({"error": err.messages}), 400
+    except Exception as e:
+        return jsonify({"message" : str(e)}), 500
 
 @app.route("/books", methods=["GET"])
 def get_books():
-    entries = load_book_entries()
-    return jsonify(entries)
+    try:
+        entries = load_book_entries()
+        return jsonify(entries), 200
+    except Exception as e:
+        return jsonify({"message" : str(e)}), 500
 
 @app.route("/recommend", methods=["GET"])
 def recommend():
-    entries = load_book_entries()
-    recs = get_recommendations(entries)
-    return jsonify({"recommendations": recs})
+    try:
+        schema = BooksSchema
+        entries = schema.load(load_book_entries())
+        recs = get_recommendations(entries)
+        return jsonify({"recommendations": recs})
+    except ValidationError as err:
+        return jsonify({"error": err.messages}), 400    
+    except Exception as e:
+        return jsonify({"message" : str(e)}), 500
+
 
 def log_book():
     if not os.path.exists("data"):

@@ -1,13 +1,21 @@
 from openai import OpenAI
 import os
 from dotenv import load_dotenv
+from data.schema import BooksSchema, ValidationError
 
 load_dotenv()
 client = OpenAI(api_key = os.getenv("OPENAI_API_KEY"))
 
-def get_recommendations(past_entries):
+def get_recommendations(past_entries, debug = False):
+    prompt_data = []
+    for entry in past_entries:
+        try:
+            validated = BooksSchema().load(entry)
+            prompt_data.append(validated)
+        except ValidationError as err:
+            print(f"Skipping invalid entry: {err.messages}")
     
-    prompt = build_prompt_from_data(past_entries)
+    prompt = build_prompt_from_data(prompt_data)
     
     print("prompt sent to AI:\n" + prompt + "\n")
     
@@ -27,6 +35,10 @@ def get_recommendations(past_entries):
     )
     
     finalOutput = output.choices[0].message.content
+    
+    if debug:
+        print("📤 Final Prompt Sent to OpenAI:")
+        print(prompt)
     
     return finalOutput
 

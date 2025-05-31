@@ -1,88 +1,130 @@
+"""
+BookLog+ Flask Backend Server
+
+This module serves as the main entry point for the BookLog+ Flask application.
+It provides RESTful API endpoints for managing books, retrieving recommendations,
+and handling user data. The application uses Flask-CORS for cross-origin support
+and integrates with Supabase for authentication.
+
+Endpoints:
+    - POST /add: Add a new book to user's library
+    - GET /books: Retrieve user's book collection
+    - GET /recommend: Get personalized book recommendations
+"""
+
 import json
 import os
-from core.logic import load_book_entries,save_book_entry
+from core.logic import load_book_entries, save_book_entry
 from api.rec_engine import get_recommendations
 from flask import Flask, request, jsonify
+from flask_cors import CORS
 from core.logic import save_book_entry, load_book_entries
 from data.schema import BooksSchema, ValidationError
+from data.auth import sync_user_profile, signup_user, login_user
 
+# Initialize Flask application with CORS support
 app = Flask(__name__)
-
-def main():
-    print("Welcome to BookLog+!")
-    print("1. Log a book")
-    print("2. View reading history")
-    print("3. Get Recommendations")
-    choice = input("Choose an option: ")
-
-    if choice == "1":
-        log_book()
-    elif choice == "2":
-        view_history()
-    elif choice == "3":
-        print(get_recommendations(load_book_entries()))
+CORS(app)
 
 @app.route("/add", methods=["POST"])        
 def add_book():
+    """
+    Add a new book to the user's library.
+    
+    Expects a JSON payload with the following structure:
+    {
+        "user_id": "string",
+        "title": "string",
+        "author": "string",
+        "reflection": "string"
+    }
+    
+    Returns:
+        JSON response with success message or error details
+        Status codes:
+            200: Success
+            400: Validation error or missing user_id
+            500: Server error
+    """
     try:
-        data = request.get_json()
-        
         schema = BooksSchema()
+        
+        data = request.get_json()
+        user_id = data.get("user_id")
+        
+        if not user_id:
+            return jsonify({"message": "Missing userID"}), 400
+        
+        # Validate incoming data against schema
         validated = schema.load(data)
         
-        save_book_entry(validated)
-        return jsonify({"message" : "Book saved successfully!"}), 200
+        # Save validated book entry to storage
+        save_book_entry(validated, user_id)
+        return jsonify({"message": "Book saved successfully!"}), 200
     except ValidationError as err:
         return jsonify({"error": err.messages}), 400
     except Exception as e:
-        return jsonify({"message" : str(e)}), 500
+        return jsonify({"message": str(e)}), 500
 
 @app.route("/books", methods=["GET"])
 def get_books():
+    """
+    Retrieve all books for a specific user.
+    
+    Query Parameters:
+        user_id (str): The ID of the user whose books to retrieve
+        
+    Returns:
+        JSON array of book objects or error message
+        Status codes:
+            200: Success
+            400: Missing user_id
+            500: Server error
+    """
     try:
-        entries = load_book_entries()
+        user_id = request.args.get("user_id")
+        
+        if not user_id:
+            return jsonify({"message": "Missing userID"}), 400
+        
+        entries = load_book_entries(user_id)
         return jsonify(entries), 200
     except Exception as e:
-        return jsonify({"message" : str(e)}), 500
+        return jsonify({"message": str(e)}), 500
 
 @app.route("/recommend", methods=["GET"])
 def recommend():
+    """
+    Get personalized book recommendations based on user's reading history.
+    
+    Uses OpenAI's API to generate intelligent recommendations based on
+    the user's previously read books and reflections.
+    
+    Query Parameters:
+        user_id (str): The ID of the user to get recommendations for
+        
+    Returns:
+        JSON object containing array of recommended books
+        Status codes:
+            200: Success
+            400: Validation error
+            500: Server error
+    """
     try:
-        schema = BooksSchema
-        entries = schema.load(load_book_entries())
+        user_id = request.args.get("user_id")
+        
+        # Load user's reading history
+        entries = load_book_entries(user_id)
+        # Generate recommendations based on history
         recs = get_recommendations(entries)
+        
         return jsonify({"recommendations": recs})
     except ValidationError as err:
         return jsonify({"error": err.messages}), 400    
     except Exception as e:
-        return jsonify({"message" : str(e)}), 500
-
-
-def log_book():
-    if not os.path.exists("data"):
-        os.makedirs("data")
-    
-    book_name = input("Enter the title of the book: ")
-    author_name = input("Enter the author's name: ")
-    lesson = input("What's one lesson you learned from the book: ")
-    
-    new_entry = {
-        "book_name" : book_name,
-        "author_name" : author_name,
-        "reflection" : lesson
-    }
-    
-    save_book_entry(new_entry)
-    
-def view_history():
-    data = load_book_entries()
-    
-    if not data:
-        print("Your book log is empty")
-    for i, book in enumerate(data, 1):
-        print(f"📕{i}: {book['book_name']} by {book['author_name']}\n\tRefleftion: {book['reflection']}\n")
+        return jsonify({"message": str(e)}), 500
 
 if __name__ == "__main__":
-    main()
+    app.run(debug=True)
     
     

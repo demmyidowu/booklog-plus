@@ -12,6 +12,7 @@
   "dependencies": {
     "@analytics/google-analytics": "^1.1.0",
     "@supabase/supabase-js": "^2.49.8",
+    "analytics": "^0.8.16",
     "dotenv": "^16.5.0",
     "lucide-react": "^0.511.0",
     "react": "^19.1.0",

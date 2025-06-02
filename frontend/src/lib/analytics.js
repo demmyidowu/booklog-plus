@@ -24,4 +24,15 @@ export const trackEvent = (category, action, label = null) => {
     })
 }
 
+export const trackError = (error, context, component = 'Unknown') => {
+    analytics.track('Error', {
+        errorType: error.name || 'Unknown Error',
+        message: error.message,
+        component,
+        context,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+    })
+}
+
 export default analytics

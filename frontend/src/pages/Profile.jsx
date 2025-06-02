@@ -8,6 +8,7 @@ import Input from "./components/Input"
 import Card from "./components/Card"
 import toast from "react-hot-toast"
 import { useUser } from "./UserContext"
+import { trackEvent, trackError } from "../lib/analytics"
 
 export default function Profile({ onSignOut }) {
   const user = useUser()
@@ -16,6 +17,8 @@ export default function Profile({ onSignOut }) {
   const [initialName, setInitialName] = useState(user?.user_metadata?.name || "")
   const [isLoading, setIsLoading] = useState(false)
   const [bookCount, setBookCount] = useState(0)
+  const [favoriteGenre, setFavoriteGenre] = useState("")
+  const [readingGoal, setReadingGoal] = useState("")
 
   // Update state when user data changes
   useEffect(() => {
@@ -54,6 +57,11 @@ export default function Profile({ onSignOut }) {
 
     if (!firstName.trim()) {
       toast.error("First name is required")
+      trackError(
+        new Error("First name required"),
+        { userId: user?.id },
+        'Profile'
+      )
       return
     }
 
@@ -64,24 +72,43 @@ export default function Profile({ onSignOut }) {
         data: { name: firstName }
       })
 
-      if (userError) throw userError
+      if (userError) {
+        trackError(userError, { userId: user?.id, updateType: 'auth' }, 'Profile')
+        throw userError
+      }
 
       // Update User_Profile table
       const { error: profileError } = await supabase
         .from("User_Profile")
-        .upsert({
-          user_id: user.id,
-          name: firstName
-        }, {
-          onConflict: 'user_id'
-        })
+        .upsert([
+          {
+            user_id: user.id,
+            first_name: firstName,
+            favorite_genre: favoriteGenre,
+            reading_goal: readingGoal
+          }
+        ])
 
-      if (profileError) throw profileError
+      if (profileError) {
+        trackError(profileError, {
+          userId: user?.id,
+          updateType: 'profile',
+          fields: { favoriteGenre, readingGoal }
+        }, 'Profile')
+        throw profileError
+      }
 
       toast.success("✅ Profile updated!")
       setInitialName(firstName)
+      trackEvent('Profile', 'Profile Updated Successfully')
     } catch (error) {
       console.error("❌ Save error:", error)
+      trackError(error, {
+        userId: user?.id,
+        firstName,
+        favoriteGenre,
+        readingGoal
+      }, 'Profile')
       toast.error("Failed to save profile")
       // Revert to previous name on error
       setFirstName(initialName)

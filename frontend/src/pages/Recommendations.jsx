@@ -2,6 +2,7 @@
 import { useEffect, useState } from "react"
 import { useUser } from "./UserContext.jsx"
 import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink } from "lucide-react"
+import { trackEvent, trackError } from "../lib/analytics"
 import Card from "./components/Card"
 import Button from "./components/Button"
 
@@ -20,17 +21,30 @@ export default function Recommendations() {
     setHasRequested(true)
     try {
       const res = await fetch(`http://127.0.0.1:5000/recommend?user_id=${user.id}`)
-      if (!res.ok) throw new Error('Failed to fetch recommendations')
+      if (!res.ok) {
+        const error = new Error('Failed to fetch recommendations')
+        error.status = res.status
+        throw error
+      }
       const data = await res.json()
 
       // Validate we got exactly 3 recommendations
       if (!data.recommendations || !Array.isArray(data.recommendations) || data.recommendations.length !== 3) {
-        throw new Error('Invalid recommendations format')
+        const error = new Error('Invalid recommendations format')
+        error.data = data
+        throw error
       }
 
       setRecommendations(data.recommendations)
+      trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {
       console.error("Error fetching recommendations:", err)
+      trackError(err, {
+        userId: user?.id,
+        hasRequested,
+        status: err.status,
+        data: err.data
+      }, 'Recommendations')
       setError(err.message)
     } finally {
       setIsLoading(false)

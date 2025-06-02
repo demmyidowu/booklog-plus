@@ -22,3 +22,37 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Environment
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+*.pyo
+*.pyd
+.Python
+env/
+
+# Node
+dist/
+build/
+.npm
+*.log
+
+# System
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Testing
+coverage/
+.coverage
+htmlcov/
+.pytest_cache/

@@ -6,6 +6,8 @@ import { supabase } from "../lib/supabase"
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+import { trackEvent, trackError } from "../lib/analytics"
+import { toast } from "react-hot-toast"
 
 export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
   const [email, setEmail] = useState("")
@@ -15,25 +17,49 @@ export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setLoading(true)
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password })
-    setLoading(false)
 
-    if (error) {
-      alert("Sign-in failed: " + error.message)
-    } else {
-      console.log("Signed in!", data)
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      })
+
+      if (error) {
+        trackError(error, { email }, 'SignIn')
+        toast.error("Sign-in failed: " + error.message)
+        return
+      }
+
+      trackEvent('Auth', 'Sign In Successful')
       localStorage.setItem("currentPage", "dashboard") // BONUS: persist page
       onSignIn?.() // call only if passed in
+    } catch (err) {
+      trackError(err, { email }, 'SignIn')
+      toast.error("An unexpected error occurred")
+    } finally {
+      setLoading(false)
     }
   }
 
   const handleForgotPassword = async () => {
     if (!email) return alert("Enter your email first.")
-    const { error } = await supabase.auth.resetPasswordForEmail(email, {
-      redirectTo: "http://localhost:5173/update-password",
-    })
-    if (error) alert("Reset failed: " + error.message)
-    else alert("Check your email to reset password.")
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/update-password`,
+      })
+
+      if (error) {
+        trackError(error, { email }, 'PasswordReset')
+        toast.error("Reset failed: " + error.message)
+        return
+      }
+
+      trackEvent('Auth', 'Password Reset Requested')
+      toast.success("Check your email for the reset link")
+    } catch (err) {
+      trackError(err, { email }, 'PasswordReset')
+      toast.error("Failed to request password reset")
+    }
   }
 
   return (

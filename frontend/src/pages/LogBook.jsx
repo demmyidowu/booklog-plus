@@ -2,12 +2,15 @@
 
 import { useState } from "react"
 import { useUser } from "./UserContext"
+import { trackEvent, trackError } from '../lib/analytics'
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
 import Card from "./components/Card"
+import { toast } from "react-hot-toast"
 
 export default function LogBook() {
+  trackEvent('LogBook', 'A Book Was Logged')
   const user = useUser()
   const [formData, setFormData] = useState({
     title: "",
@@ -38,25 +41,36 @@ export default function LogBook() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          book_name: formData.title,
-          author_name: formData.author,
-          reflection: formData.reflection,
           user_id: user.id,
+          title: formData.title,
+          author: formData.author,
+          reflection: formData.reflection,
         }),
       })
 
       if (!response.ok) {
-        throw new Error('Failed to save book')
+        const error = new Error('Failed to save book')
+        error.status = response.status
+        error.statusText = response.statusText
+        throw error
       }
 
       const result = await response.json()
       console.log("✅ Book saved:", result)
 
-      alert("Book saved successfully!")
+      toast.success('Book logged successfully!')
+      trackEvent('Books', 'Book Logged Successfully')
       setFormData({ title: "", author: "", reflection: "" })
     } catch (err) {
       console.error("❌ Failed to log book:", err)
-      alert("Failed to log book. Please try again.")
+      trackError(err, {
+        userId: user?.id,
+        bookName: formData.title,
+        authorName: formData.author,
+        status: err.status,
+        statusText: err.statusText
+      }, 'LogBook')
+      toast.error('Failed to save book. Please try again.')
     } finally {
       setLoading(false)
     }

@@ -1,12 +1,13 @@
-
 "use client"
 
 import { useState } from "react"
 import { BookOpen } from "lucide-react"
 import { supabase } from "../lib/supabase"
+import { trackEvent, trackError } from '../lib/analytics'
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+import { toast } from "react-hot-toast"
 
 export default function SignUpPage({ onNavigateToSignIn }) {
   const [formData, setFormData] = useState({
@@ -15,6 +16,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
     password: "",
     confirmPassword: "",
   })
+  const [loading, setLoading] = useState(false)
 
   const handleChange = (e) => {
     setFormData((prev) => ({
@@ -25,28 +27,56 @@ export default function SignUpPage({ onNavigateToSignIn }) {
 
   const handleSubmit = async (e) => {
     e.preventDefault()
+    setLoading(true)
 
-    const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-      email: formData.email,
-      password: formData.password,
-      options: {
-        data: { name: formData.name },
-        emailRedirectTo: "http://localhost:5173/update-password"
-      },
-    })
+    try {
+      const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
+        email: formData.email,
+        password: formData.password,
+        options: {
+          data: {
+            name: formData.name,
+          },
+          emailRedirectTo: "http://localhost:5173/update-password"
+        },
+      })
 
-    if (signUpError) return alert("Signup failed: " + signUpError.message)
+      if (signUpError) {
+        trackError(signUpError, { email: formData.email, name: formData.name }, 'SignUp')
+        toast.error("Signup failed: " + signUpError.message)
+        return
+      }
 
-    const user = signUpData?.user
-    if (!user) return alert("Signup succeeded, but no user returned.")
+      const user = signUpData?.user
+      if (!user) return alert("Signup succeeded, but no user returned.")
 
-    const { error: profileError } = await supabase.from("User_Profile").upsert([
-      { id: user.id, 
-        name: formData.name }
-    ])
+      const { error: profileError } = await supabase.from("User_Profile").upsert([
+        {
+          id: user.id,
+          name: formData.name,
+          email: formData.email,
+        }
+      ])
 
-    if (profileError) alert("Failed to create profile: " + profileError.message)
-    else alert("Signup successful! Please check your email.")
+      if (profileError) {
+        trackError(profileError, {
+          userId: user.id,
+          email: formData.email,
+          name: formData.name
+        }, 'SignUpProfile')
+        toast.error("Failed to create profile: " + profileError.message)
+        return
+      }
+
+      trackEvent('Auth', 'Sign Up Successful')
+      toast.success("Account created! Check your email to verify your account.")
+      onNavigateToSignIn()
+    } catch (err) {
+      trackError(err, { email: formData.email, name: formData.name }, 'SignUp')
+      toast.error("An unexpected error occurred during sign up")
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -69,7 +99,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
             <Input id="email" name="email" type="email" placeholder="your.email@university.edu" value={formData.email} onChange={handleChange} />
             <Input id="password" name="password" type="password" placeholder="Enter Password" value={formData.password} onChange={handleChange} />
             <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange} />
-            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white">Create Account</Button>
+            <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={loading}>Create Account</Button>
             <div className="text-center text-sm text-slate-600">
               Already have an account?
               <button type="button" onClick={onNavigateToSignIn} className="text-blue-600 hover:underline font-medium">Sign in</button>

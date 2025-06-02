@@ -5,6 +5,14 @@
    startCommand = "python main.py"
    healthcheckPath = "/"
    restartPolicyType = "on_failure"
+   numReplicas = 1
    
    [env]
    PYTHON_VERSION = "3.8"
+   NODE_VERSION = "16.x"
+
+   [build.args]
+   PYTHON_VERSION = "3.8"
+
+   [deploy.env]
+   PORT = "5000"

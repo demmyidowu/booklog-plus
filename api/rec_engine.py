@@ -13,6 +13,8 @@ engagingly presented.
 
 from openai import OpenAI
 import os
+import json
+import re
 from dotenv import load_dotenv
 from data.schema import BooksSchema, ValidationError
 
@@ -20,19 +22,33 @@ from data.schema import BooksSchema, ValidationError
 load_dotenv()
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
-def get_recommendations(past_entries: list, debug: bool = False) -> str:
+def validate_goodreads_link(link: str) -> bool:
+    """
+    Validate if a link is a proper Goodreads book URL.
+    Returns True if the link is valid, False otherwise.
+    """
+    if not link:
+        return False
+    
+    # Check if it's a Goodreads URL
+    goodreads_pattern = r'^https?://(?:www\.)?goodreads\.com/book/show/\d+'
+    return bool(re.match(goodreads_pattern, link))
+
+def get_recommendations(past_entries: list, debug: bool = False, retry_count: int = 0) -> str:
     """
     Generate personalized book recommendations based on user's reading history.
     
     Args:
         past_entries (list): List of previously read books and reflections
         debug (bool, optional): If True, prints the prompt sent to OpenAI. Defaults to False.
+        retry_count (int, optional): Number of retries attempted. Defaults to 0.
         
     Returns:
         str: A formatted string containing three book recommendations with explanations
         
     Raises:
         ValidationError: If book entries fail schema validation
+        ValueError: If unable to get valid recommendations after retries
         
     Example:
         >>> entries = [
@@ -43,7 +59,11 @@ def get_recommendations(past_entries: list, debug: bool = False) -> str:
         ...     }
         ... ]
         >>> recommendations = get_recommendations(entries)
+
     """
+    if retry_count >= 3:  # Limit retries to prevent infinite loops
+        raise ValueError("Failed to get valid recommendations after multiple attempts")
+
     # Validate and prepare prompt data
     prompt_data = []
     for entry in past_entries:
@@ -59,6 +79,10 @@ def get_recommendations(past_entries: list, debug: bool = False) -> str:
     instruction = strings[0]
     inputPrompt = "\n".join(strings[1:])
     
+    if debug:
+        print("📤 Final Prompt Sent to OpenAI:")
+        print(prompt)
+
     # Generate recommendations using OpenAI API
     output = client.chat.completions.create(
         model='gpt-3.5-turbo',
@@ -72,11 +96,25 @@ def get_recommendations(past_entries: list, debug: bool = False) -> str:
     
     finalOutput = output.choices[0].message.content
     
-    if debug:
-        print("📤 Final Prompt Sent to OpenAI:")
-        print(prompt)
-    
-    return finalOutput
+    # Validate JSON response
+    try:
+        recs = json.loads(finalOutput)
+        if not isinstance(recs, list) or len(recs) != 3:
+            return get_recommendations(past_entries, debug, retry_count + 1)
+        
+        # Validate each recommendation
+        for rec in recs:
+            # Check required fields
+            if not all(key in rec for key in ["title", "author", "description"]):
+                return get_recommendations(past_entries, debug, retry_count + 1)
+            
+            # Remove invalid Goodreads links
+            if "link" in rec and not validate_goodreads_link(rec["link"]):
+                del rec["link"]
+        
+        return json.dumps(recs)  # Return cleaned recommendations
+    except json.JSONDecodeError:
+        return get_recommendations(past_entries, debug, retry_count + 1)
 
 def build_prompt_from_data(entries: list) -> str:
     """
@@ -91,18 +129,13 @@ def build_prompt_from_data(entries: list) -> str:
         
     Returns:
         str: Formatted prompt string for the OpenAI API
-        
-    Example:
-        >>> entries = [{"book_name": "Dune", "author_name": "Frank Herbert",
-        ...            "reflection": "its complex world-building and ecology"}]
-        >>> prompt = build_prompt_from_data(entries)
     """
     # Build list of book reflections
     reflections = []
     for book in entries:
         reflections.append(
             f"{book['book_name']} by {book['author_name']}. "
-            f"I enjoyed the book because it made me reflect on {book['reflection']}"
+            f"The reflection on this book is:\n {book['reflection']}"
         )
     
     # Construct librarian-style prompt
@@ -110,11 +143,22 @@ def build_prompt_from_data(entries: list) -> str:
         "You are a lifelong librarian known for giving spot-on book recommendations. "
         "You love helping readers find books that match their taste, tone, and interests.\n"
         f"Here's a list of books or personal reflections on books I've enjoyed:\n {reflections}\n "
-        "Based on that, recommend 3 books I might enjoy next. For each recommendation, "
-        "include a short explanation (1–2 sentences) of why you picked it — connect it "
-        "to themes, writing style, emotional tone, or authorship that align with my past favorites.\n"
-        "Keep your tone warm, conversational, and insightful — like you're chatting with "
-        "a curious reader at the front desk."
+        "Carefully analyze the themes, tone, and emotional impact to understand what I enjoy.\n"
+        "Based on that, recommend EXACTLY 3 books I might enjoy next. You MUST format your response as a valid JSON array "
+        "containing EXACTLY 3 objects. Each object MUST follow this structure:\n"
+        "[\n"
+        "  {\n"
+        '    "title": "Book Title",\n'
+        '    "author": "Author Name",\n'
+        '    "description": "Your 1-2 sentence explanation of why you recommend this book",\n'
+        '    "link": "OPTIONAL - Only include if you are absolutely certain of the correct Goodreads URL. Must start with https://www.goodreads.com/book/show/ followed by the book ID. If unsure, omit this field entirely."\n'
+        "  },\n"
+        "  {...},\n"
+        "  {...}\n"
+        "]\n\n"
+        "Return ONLY the JSON array with no additional text. The response MUST be valid JSON and MUST contain exactly 3 recommendations. "
+        "The link field is optional - only include it if you are 100% certain of the correct Goodreads URL. "
+        "If you're not certain about a Goodreads link, omit the link field entirely rather than guessing."
     )
     
     return prompt

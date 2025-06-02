@@ -107,22 +107,32 @@ def recommend():
         JSON object containing array of recommended books
         Status codes:
             200: Success
-            400: Validation error
-            500: Server error
+            400: Validation error or missing user_id
+            500: Server error or invalid AI response
     """
     try:
         user_id = request.args.get("user_id")
         
+        if not user_id:
+            return jsonify({"error": "Missing user_id parameter"}), 400
+
         # Load user's reading history
         entries = load_book_entries(user_id)
-        # Generate recommendations based on history
-        recs = get_recommendations(entries)
         
-        return jsonify({"recommendations": recs})
+        # Generate recommendations based on history
+        try:
+            recs_str = get_recommendations(entries)
+            recs = json.loads(recs_str)
+            return jsonify({"recommendations": recs})
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid recommendations format from AI"}), 500
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 500
+            
     except ValidationError as err:
         return jsonify({"error": err.messages}), 400    
     except Exception as e:
-        return jsonify({"message": str(e)}), 500
+        return jsonify({"error": str(e)}), 500
 
 if __name__ == "__main__":
     app.run(debug=True)

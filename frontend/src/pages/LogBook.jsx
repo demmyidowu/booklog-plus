@@ -101,7 +101,7 @@ export default function LogBook() {
 
           <div>
             <label htmlFor="reflection" className="block text-sm font-medium text-slate-700 mb-1">
-              Your Reflection
+              Why did you like this book, or what did you learn from it?
             </label>
             <Textarea
               id="reflection"

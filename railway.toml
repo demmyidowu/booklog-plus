@@ -1,0 +1,10 @@
+   [build]
+   builder = "nixpacks"
+   
+   [deploy]
+   startCommand = "python main.py"
+   healthcheckPath = "/"
+   restartPolicyType = "on_failure"
+   
+   [env]
+   PYTHON_VERSION = "3.8"

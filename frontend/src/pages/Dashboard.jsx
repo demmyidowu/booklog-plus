@@ -7,6 +7,7 @@ import Badge from "./components/Badge"
 import { useUser } from "./UserContext.jsx"
 import SignInPage from "./SignInPage.jsx"
 import { supabase } from "../lib/supabase"
+import Button from "./components/Button"
 
 const READING_QUOTES = [
   { quote: "A reader lives a thousand lives before he dies. The man who never reads lives only one.", author: "George R.R. Martin" },
@@ -210,7 +211,7 @@ export default function Dashboard() {
         </Card>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-slate-200">
           <div className="p-6">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">Recently Read</h3>
@@ -250,6 +251,25 @@ export default function Dashboard() {
               "{quote.quote}"
             </blockquote>
             <p className="text-sm text-slate-600">— {quote.author}</p>
+          </div>
+        </Card>
+      </div>
+
+      <div className="flex justify-center items-center w-full">
+        <Card className="border-slate-200 w-full max-w-md">
+          <div className="p-6">
+            <h3 className="text-lg font-semibold text-slate-800 mb-4">Give Feedback</h3>
+            <p className="text-sm text-slate-600">
+              We're always looking for ways to improve. Please share your thoughts with us.
+              <br />
+              <br />
+              <Button className="bg-blue-600 hover:bg-blue-700 text-white"
+                onClick={() => {
+                  window.open("https://forms.gle/DsFCS1146EDCrv9u7", "_blank")
+                }}>
+                Give Feedback
+              </Button>
+            </p>
           </div>
         </Card>
       </div>

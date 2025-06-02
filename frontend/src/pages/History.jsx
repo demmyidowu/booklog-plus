@@ -82,13 +82,16 @@ export default function History() {
             filteredBooks.map((book) => (
               <Card key={book.id} className="border-slate-200">
                 <div className="p-6">
-                  <div className="flex items-start gap-4">
-                    <div className="flex-1">
-                      <h3 className="text-xl font-semibold text-slate-800 mb-2">{book.book_name}</h3>
-                      <p className="text-slate-600 mb-3">by {book.author_name}</p>
-                      <p className="text-slate-700 mb-4">{book.reflection}</p>
-                      <div className="flex items-center gap-2 text-sm text-slate-500">
-                        <Calendar className="h-4 w-4" />
+                  <div className="flex gap-4">
+                    <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                      <BookOpen className="h-5 w-5 text-white" />
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <h4 className="font-medium text-slate-800 text-lg mb-1">{book.book_name}</h4>
+                      <p className="text-sm text-slate-600 mb-2">by {book.author_name}</p>
+                      <p className="text-slate-700 text-sm mb-2">{book.reflection}</p>
+                      <div className="flex items-center gap-2 text-xs text-slate-500">
+                        <Calendar className="h-3 w-3" />
                         <span>{new Date(book.created_at).toLocaleDateString()}</span>
                       </div>
                     </div>

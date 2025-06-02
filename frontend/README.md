@@ -1,12 +1,57 @@
-# React + Vite
+# BookLog+ Frontend
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+This is the React frontend for BookLog+, built with Vite and TailwindCSS. It provides a modern, responsive interface for users to track their reading journey and get AI-powered book recommendations.
 
-Currently, two official plugins are available:
+## 🚀 Features
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+- 📱 Responsive design that works on all devices
+- 🎨 Modern UI with TailwindCSS
+- 🔐 Supabase authentication integration
+- 📚 Book tracking and reflection interface
+- 🤖 AI-powered recommendation system with Goodreads integration
+- ⚡ Fast development with HMR (Hot Module Replacement)
 
-## Expanding the ESLint configuration
+## 🛠️ Setup
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. Install dependencies:
+```bash
+npm install
+```
+
+2. Create a `.env` file:
+```env
+VITE_SUPABASE_URL=your-supabase-url
+VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+```
+
+3. Start the development server:
+```bash
+npm run dev
+```
+
+## 📁 Project Structure
+
+```
+src/
+├── pages/           # Main page components
+├── components/      # Reusable UI components
+├── lib/            # Utility functions and hooks
+└── assets/         # Static assets
+```
+
+## 📦 Key Dependencies
+
+- React 18
+- Vite
+- TailwindCSS
+- Lucide Icons
+- Supabase Client
+
+## 🔧 Development
+
+- Uses ESLint for code quality
+- Follows React best practices
+- Implements responsive design patterns
+- Uses modern React features (hooks, context)
+
+For the complete project documentation, see the [main README](../README.md).

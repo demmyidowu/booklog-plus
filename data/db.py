@@ -2,7 +2,7 @@
 Database Configuration Module
 
 This module initializes the Supabase client for database operations.
-It loads necessary environment variables and creates a singleton client
+It loads the necessary environment variables and creates a single client
 instance that can be imported and used throughout the application.
 
 Required Environment Variables:

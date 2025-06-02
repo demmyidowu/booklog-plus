@@ -10,6 +10,7 @@ BookLog+ is a modern, full-stack reading companion application that helps users 
 - 🔐 **User Authentication**: Secure login and profile management via Supabase
 - 📱 **Responsive Design**: Beautiful, modern UI that works on all devices
 - 🔄 **Real-time Updates**: Instant data synchronization across devices
+- 📖 **Goodreads Integration**: Direct links to recommended books on Goodreads
 
 ## 🚀 Getting Started
 
@@ -89,7 +90,7 @@ booklog-plus/
 ├── core/                   # Core business logic
 │   └── logic.py           # Book management functions
 ├── api/                    # API endpoints and external services
-│   └── rec_engine.py      # Recommendation engine
+│   └── rec_engine.py      # Recommendation engine with Goodreads integration
 ├── data/                   # Data models and storage
 │   ├── schema.py          # Data validation schemas
 │   └── auth.py            # Authentication utilities
@@ -119,7 +120,11 @@ Retrieve user's book collection
 Get personalized book recommendations
 
 - Required query param: `user_id`
-- Returns: Array of recommended books
+- Returns: Array of recommended books, each containing:
+  - `title`: Book title
+  - `author`: Author name
+  - `description`: Why this book is recommended
+  - `link`: (Optional) Link to the book on Goodreads
 
 ## 🤝 Contributing
 

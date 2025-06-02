@@ -10,6 +10,7 @@ import Header from "./pages/Header"
 import Sidebar from "./pages/Sidebar"
 import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
+import { trackPageView } from "./lib/analytics"  // Add this import
 import "./index.css"
 
 function App() {
@@ -18,6 +19,11 @@ function App() {
   })
 
   const user = useUser()
+
+  // 📊 Track page views
+  useEffect(() => {
+    trackPageView(currentPage)
+  }, [currentPage])
 
   // 🧠 Persist the page on change
   useEffect(() => {
@@ -54,15 +60,15 @@ function App() {
     }
   }
 
-    
-  // 🔐 Show layout only if signed in and not on auth pages
-    const showLayout = !!user && !["signin", "signup"].includes(currentPage)
-    console.log("Current Page:", currentPage)
-    console.log("user:", user)
-    console.log("currentPage:", currentPage)
-    console.log("showLayout:", showLayout)
 
-    return (
+  // 🔐 Show layout only if signed in and not on auth pages
+  const showLayout = !!user && !["signin", "signup"].includes(currentPage)
+  console.log("Current Page:", currentPage)
+  console.log("user:", user)
+  console.log("currentPage:", currentPage)
+  console.log("showLayout:", showLayout)
+
+  return (
     <div className="flex h-screen">
       {showLayout && <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />}
       <div className="flex-1 flex flex-col">
@@ -77,7 +83,7 @@ function App() {
         </main>
       </div>
     </div>
-    )
+  )
 }
 
 export default App

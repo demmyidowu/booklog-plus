@@ -1,10 +1,8 @@
    [build]
-   builder = "NIXPACKS"
+   builder = "nixpacks"
    buildCommand = """
-    curl -fsSL https://deb.nodesource.com/setup_18.x | bash - &&\
-    apt-get install -y nodejs &&\
-    cd frontend && npm install && npm run build &&\
-    pip install -r requirements.txt
+    pip install -r requirements.txt &&\
+    cd frontend && npm install && npm run build
 """
    
    [deploy]
@@ -17,6 +15,10 @@
    PYTHON_VERSION = "3.8"
    NODE_VERSION = "18.x"
 
-   [build.args]
-   PYTHON_VERSION = "3.8"
-   NODE_VERSION = "18.x"
+   [[build.env]]
+   name = "NIXPACKS_NODE_VERSION"
+   value = "18.x"
+
+   [[build.env]]
+   name = "NIXPACKS_PYTHON_VERSION"
+   value = "3.8"

@@ -1,7 +1,7 @@
 import Analytics from 'analytics'
-import googleAnalytics from '@analytics/google-analytics'
+// import googleAnalytics from '@analytics/google-analytics'
 
-const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID
+// const measurementId = import.meta.env.VITE_GA_MEASUREMENT_ID
 
 // Initialize analytics with or without Google Analytics based on measurement ID
 const analytics = Analytics({

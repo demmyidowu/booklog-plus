@@ -11,5 +11,13 @@ export default defineConfig({
   define: {
     // This makes environment variables available to your app
     'process.env.VITE_GA_MEASUREMENT_ID': JSON.stringify(process.env.VITE_GA_MEASUREMENT_ID)
+  },
+  server: {
+    port: process.env.PORT || 3000,
+    host: '0.0.0.0'
+  },
+  preview: {
+    port: process.env.PORT || 3000,
+    host: '0.0.0.0'
   }
 })

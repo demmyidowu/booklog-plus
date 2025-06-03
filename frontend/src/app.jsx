@@ -11,6 +11,7 @@ import Sidebar from "./pages/Sidebar"
 import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
 import { trackPageView } from "./lib/analytics"  // Add this import
+import AnalyticsNotice from "./components/AnalyticsNotice"
 import "./index.css"
 
 function App() {
@@ -82,6 +83,7 @@ function App() {
           {renderPage() || <p>Nothing to render</p>}
         </main>
       </div>
+      <AnalyticsNotice />
     </div>
   )
 }

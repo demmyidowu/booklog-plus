@@ -10,6 +10,7 @@ This is the React frontend for BookLog+, built with Vite and TailwindCSS. It pro
 - 📚 Book tracking and reflection interface
 - 🤖 AI-powered recommendation system with Goodreads integration
 - ⚡ Fast development with HMR (Hot Module Replacement)
+- 📊 Analytics tracking for better user experience
 
 ## 🛠️ Setup
 
@@ -22,12 +23,23 @@ npm install
 ```env
 VITE_SUPABASE_URL=your-supabase-url
 VITE_SUPABASE_ANON_KEY=your-supabase-anon-key
+VITE_GA_MEASUREMENT_ID=your-ga-measurement-id
 ```
 
 3. Start the development server:
 ```bash
 npm run dev
 ```
+
+### 📊 Analytics Setup
+
+BookLog+ uses Google Analytics to improve user experience. To ensure analytics work properly:
+
+1. Allow JavaScript from Google Analytics domains in your browser
+2. If you use an ad blocker, whitelist the following domains:
+   - `www.googletagmanager.com`
+   - `www.google-analytics.com`
+3. If you prefer not to be tracked, you can keep your ad blocker enabled. The app will continue to function normally.
 
 ## 📁 Project Structure
 

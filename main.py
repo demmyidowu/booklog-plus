@@ -23,8 +23,22 @@ from data.schema import BooksSchema, ValidationError
 
 
 # Initialize Flask application with CORS support
-app = Flask(__name__)
+app = Flask(__name__, static_folder='frontend/dist')
 CORS(app)
+
+# Serve the React application
+@app.route('/')
+@app.route('/dashboard')
+@app.route('/log-book')
+@app.route('/history')
+@app.route('/recommendations')
+@app.route('/profile')
+@app.route('/signin')
+@app.route('/signup')
+def serve():
+    """Serve the React application"""
+    return send_from_directory(app.static_folder, 'index.html')
+
 
 @app.route("/add", methods=["POST"])        
 def add_book():
@@ -134,21 +148,12 @@ def recommend():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
-@app.route("/dashboard")
-def dashboard():
-    """
-    Serve the dashboard page
-    """
-    return send_from_directory('frontend/dist', 'index.html')
 
-
-@app.route('/')
-def index():
-    """
-    Serve the index page
-    """
-    return redirect("/dashboard")
-
+# Serve static files
+@app.route("/<path:path>")
+def static_proxy(path):
+    """Serve static files from the React app build directory"""
+    return send_from_directory(app.static_folder, path)
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

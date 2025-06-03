@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useUser } from "./UserContext"
-//import { trackEvent, trackError } from '../lib/analytics'
+import { trackEvent, trackError } from '../lib/analytics'
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"

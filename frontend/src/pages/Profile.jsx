@@ -9,6 +9,7 @@ import Card from "./components/Card"
 import toast from "react-hot-toast"
 import { useUser } from "./UserContext"
 import { trackEvent, trackError } from "../lib/analytics"
+import { getApiUrl } from "../config"
 
 export default function Profile({ onSignOut }) {
   const user = useUser()
@@ -34,7 +35,7 @@ export default function Profile({ onSignOut }) {
       setIsLoading(true)
       try {
         // Fetch book count from your Flask backend
-        const response = await fetch(`http://127.0.0.1:5000/books?user_id=${user.id}`)
+        const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
         if (!response.ok) {
           throw new Error('Failed to fetch books')
         }

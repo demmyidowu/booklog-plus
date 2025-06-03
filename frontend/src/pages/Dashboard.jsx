@@ -8,6 +8,7 @@ import { useUser } from "./UserContext.jsx"
 import SignInPage from "./SignInPage.jsx"
 import { supabase } from "../lib/supabase"
 import Button from "./components/Button"
+import { getApiUrl } from "../config"
 
 const READING_QUOTES = [
   { quote: "A reader lives a thousand lives before he dies. The man who never reads lives only one.", author: "George R.R. Martin" },

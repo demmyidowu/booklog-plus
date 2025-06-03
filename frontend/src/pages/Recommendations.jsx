@@ -5,6 +5,7 @@ import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink } from "lucide-r
 import { trackEvent, trackError } from "../lib/analytics"
 import Card from "./components/Card"
 import Button from "./components/Button"
+import { getApiUrl } from "../config"
 
 export default function Recommendations() {
   const user = useUser()
@@ -20,7 +21,7 @@ export default function Recommendations() {
     setError(null)
     setHasRequested(true)
     try {
-      const res = await fetch(`http://127.0.0.1:5000/recommend?user_id=${user.id}`)
+      const res = await fetch(getApiUrl(`recommend?user_id=${user.id}`))
       if (!res.ok) {
         const error = new Error('Failed to fetch recommendations')
         error.status = res.status

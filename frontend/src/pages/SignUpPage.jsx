@@ -37,7 +37,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
           data: {
             name: formData.name,
           },
-          emailRedirectTo: "http://localhost:5173/update-password"
+          emailRedirectTo: "https://booklogplus.up.railway.app"
         },
       })
 

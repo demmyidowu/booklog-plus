@@ -8,6 +8,7 @@ import Input from "./components/Input"
 import Textarea from "./components/Textarea"
 import Card from "./components/Card"
 import { toast } from "react-hot-toast"
+import { getApiUrl } from "../config"
 
 export default function LogBook() {
   //trackEvent('LogBook', 'A Book Was Logged')
@@ -37,7 +38,7 @@ export default function LogBook() {
     setLoading(true)
 
     try {
-      const response = await fetch("http://127.0.0.1:5000/add", {
+      const response = await fetch(getApiUrl("add"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

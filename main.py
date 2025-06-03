@@ -20,11 +20,28 @@ from flask import Flask, request, jsonify, redirect, send_from_directory
 from flask_cors import CORS
 from core.logic import save_book_entry, load_book_entries
 from data.schema import BooksSchema, ValidationError
+from dotenv import load_dotenv
 
+# Load environment variables
+load_dotenv()
 
 # Initialize Flask application with CORS support
 app = Flask(__name__, static_folder='frontend/dist')
-CORS(app)
+
+# Configure CORS - in production, allow same origin
+if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
+    # In production (Railway), allow requests from same origin
+    CORS(app, supports_credentials=True)
+else:
+    # In development, use allowed origins from env
+    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    CORS(app, resources={
+        r"/*": {
+            "origins": allowed_origins,
+            "methods": ["GET", "POST", "OPTIONS"],
+            "allow_headers": ["Content-Type", "Authorization"]
+        }
+    })
 
 # Serve the React application
 @app.route('/')

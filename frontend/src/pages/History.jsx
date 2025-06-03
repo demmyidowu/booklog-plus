@@ -6,6 +6,7 @@ import Card from "./components/Card"
 import Badge from "./components/Badge"
 import Input from "./components/Input"
 import { useUser } from "./UserContext"
+import { getApiUrl } from "../config"
 
 export default function History() {
   const user = useUser()
@@ -17,7 +18,7 @@ export default function History() {
     async function fetchBooks() {
       if (!user) return
       try {
-        const response = await fetch(`http://127.0.0.1:5000/books?user_id=${user.id}`)
+        const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
         if (!response.ok) {
           throw new Error('Failed to fetch books')
         }

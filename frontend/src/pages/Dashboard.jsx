@@ -108,7 +108,7 @@ export default function Dashboard() {
     async function fetchDashboardData() {
       try {
         // Fetch all books
-        const response = await fetch(`http://127.0.0.1:5000/books?user_id=${user.id}`)
+        const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
         if (!response.ok) throw new Error('Failed to fetch books')
         const books = await response.json()
 

@@ -1,8 +1,9 @@
-node_modules
-__pycache__
-*.pyc
-.env
+**/__pycache__
+**/*.pyc
+**/.DS_Store
+**/.env
 .git
 .gitignore
-.DS_Store
-.venv 
+.venv
+node_modules
+frontend/node_modules 

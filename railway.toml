@@ -3,13 +3,13 @@ builder = "DOCKERFILE"
 dockerfilePath = "Dockerfile"
 
 [deploy]
-startCommand = "python main.py"
+startCommand = ""  # Empty because we're using CMD in Dockerfile
 healthcheckPath = "/"
 restartPolicyType = "ON_FAILURE"
 numReplicas = 1
 
 [env]
-PYTHON_VERSION = "3.8"
+PYTHON_VERSION = "3.9"
 NODE_VERSION = "18.x"
 
 [[build.env]]

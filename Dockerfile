@@ -1,5 +1,5 @@
 # Use an official Node.js runtime as the base image
-FROM node:18 as frontend-build
+FROM node:18-slim as frontend-build
 
 # Set working directory for frontend
 WORKDIR /app/frontend
@@ -16,17 +16,26 @@ COPY frontend/ ./
 # Build frontend
 RUN npm run build
 
-# Use Python image for the final stage
-FROM python:3.8-slim
+# Use Python 3.9 image for the final stage
+FROM python:3.9-slim
 
 # Set working directory
 WORKDIR /app
+
+# Install system dependencies
+RUN apt-get update && apt-get install -y \
+    gcc \
+    python3-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+# Upgrade pip
+RUN pip install --no-cache-dir --upgrade pip
 
 # Copy Python requirements
 COPY requirements.txt .
 
 # Install Python dependencies
-RUN pip install -r requirements.txt
+RUN pip install --no-cache-dir -r requirements.txt
 
 # Copy the built frontend from previous stage
 COPY --from=frontend-build /app/frontend/dist /app/frontend/dist
@@ -38,7 +47,7 @@ COPY core/ core/
 COPY data/ data/
 
 # Expose port
-EXPOSE 5000
+EXPOSE $PORT
 
 # Start command
 CMD ["python", "main.py"]

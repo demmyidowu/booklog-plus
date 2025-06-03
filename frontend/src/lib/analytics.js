@@ -1,3 +1,4 @@
+/*
 import Analytics from 'analytics'
 // import googleAnalytics from '@analytics/google-analytics'
 
@@ -62,3 +63,4 @@ if (!measurementId) {
 }
 
 export default analytics
+*/

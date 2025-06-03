@@ -3,7 +3,7 @@
 import { useState } from "react"
 import { BookOpen } from "lucide-react"
 import { supabase } from "../lib/supabase"
-import { trackEvent, trackError } from '../lib/analytics'
+//import { trackEvent, trackError } from '../lib/analytics'
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
@@ -68,7 +68,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
         return
       }
 
-      trackEvent('Auth', 'Sign Up Successful')
+      //trackEvent('Auth', 'Sign Up Successful')
       toast.success("Account created! Check your email to verify your account.")
       onNavigateToSignIn()
     } catch (err) {

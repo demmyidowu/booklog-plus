@@ -2,7 +2,7 @@
 import { useEffect, useState } from "react"
 import { useUser } from "./UserContext.jsx"
 import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink } from "lucide-react"
-import { trackEvent, trackError } from "../lib/analytics"
+//import { trackEvent, trackError } from "../lib/analytics"
 import Card from "./components/Card"
 import Button from "./components/Button"
 
@@ -36,7 +36,7 @@ export default function Recommendations() {
       }
 
       setRecommendations(data.recommendations)
-      trackEvent('Recommendations', 'Recommendations Fetched Successfully')
+      //trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {
       console.error("Error fetching recommendations:", err)
       trackError(err, {

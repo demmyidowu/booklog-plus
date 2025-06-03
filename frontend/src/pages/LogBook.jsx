@@ -2,7 +2,7 @@
 
 import { useState } from "react"
 import { useUser } from "./UserContext"
-import { trackEvent, trackError } from '../lib/analytics'
+//import { trackEvent, trackError } from '../lib/analytics'
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
@@ -10,7 +10,7 @@ import Card from "./components/Card"
 import { toast } from "react-hot-toast"
 
 export default function LogBook() {
-  trackEvent('LogBook', 'A Book Was Logged')
+  //trackEvent('LogBook', 'A Book Was Logged')
   const user = useUser()
   const [formData, setFormData] = useState({
     title: "",

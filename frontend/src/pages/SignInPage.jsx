@@ -6,7 +6,7 @@ import { supabase } from "../lib/supabase"
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
-import { trackEvent, trackError } from "../lib/analytics"
+//import { trackEvent, trackError } from "../lib/analytics"
 import { toast } from "react-hot-toast"
 
 export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
@@ -30,7 +30,7 @@ export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
         return
       }
 
-      trackEvent('Auth', 'Sign In Successful')
+      //trackEvent('Auth', 'Sign In Successful')
       localStorage.setItem("currentPage", "dashboard") // BONUS: persist page
       onSignIn?.() // call only if passed in
     } catch (err) {

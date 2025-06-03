@@ -8,7 +8,7 @@ import Input from "./components/Input"
 import Card from "./components/Card"
 import toast from "react-hot-toast"
 import { useUser } from "./UserContext"
-import { trackEvent, trackError } from "../lib/analytics"
+//import { trackEvent, trackError } from "../lib/analytics"
 
 export default function Profile({ onSignOut }) {
   const user = useUser()
@@ -100,7 +100,7 @@ export default function Profile({ onSignOut }) {
 
       toast.success("✅ Profile updated!")
       setInitialName(firstName)
-      trackEvent('Profile', 'Profile Updated Successfully')
+      //trackEvent('Profile', 'Profile Updated Successfully')
     } catch (error) {
       console.error("❌ Save error:", error)
       trackError(error, {

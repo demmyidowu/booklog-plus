@@ -16,7 +16,6 @@ export default defineConfig({
         manualChunks: {
           vendor: ['react', 'react-dom'],
         },
-        inlineDynamicImports: true,
       },
     },
   },

@@ -16,11 +16,11 @@ import json
 import os
 from core.logic import load_book_entries, save_book_entry
 from api.rec_engine import get_recommendations
-from flask import Flask, request, jsonify
+from flask import Flask, request, jsonify, redirect, send_from_directory
 from flask_cors import CORS
 from core.logic import save_book_entry, load_book_entries
 from data.schema import BooksSchema, ValidationError
-from data.auth import sync_user_profile, signup_user, login_user
+
 
 # Initialize Flask application with CORS support
 app = Flask(__name__)
@@ -133,6 +133,22 @@ def recommend():
         return jsonify({"error": err.messages}), 400    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+    
+@app.route("/dashboard")
+def dashboard():
+    """
+    Serve the dashboard page
+    """
+    return send_from_directory('frontend/dist', 'index.html')
+
+
+@app.route('/')
+def index():
+    """
+    Serve the index page
+    """
+    return redirect("/dashboard")
+
 
 if __name__ == "__main__":
     port = int(os.environ.get('PORT', 5000))

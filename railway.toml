@@ -1,24 +1,21 @@
-   [build]
-   builder = "nixpacks"
-   buildCommand = """
-    pip install -r requirements.txt &&\
-    cd frontend && npm install && npm run build
-"""
-   
-   [deploy]
-   startCommand = "python main.py & cd frontend && npm run start"
-   healthcheckPath = "/"
-   restartPolicyType = "ON_FAILURE"
-   numReplicas = 1
-   
-   [env]
-   PYTHON_VERSION = "3.8"
-   NODE_VERSION = "18.x"
+[build]
+builder = "DOCKERFILE"
+dockerfilePath = "Dockerfile"
 
-   [[build.env]]
-   name = "NIXPACKS_NODE_VERSION"
-   value = "18.x"
+[deploy]
+startCommand = "python main.py"
+healthcheckPath = "/"
+restartPolicyType = "ON_FAILURE"
+numReplicas = 1
 
-   [[build.env]]
-   name = "NIXPACKS_PYTHON_VERSION"
-   value = "3.8"
+[env]
+PYTHON_VERSION = "3.8"
+NODE_VERSION = "18.x"
+
+[[build.env]]
+name = "NIXPACKS_NODE_VERSION"
+value = "18.x"
+
+[[build.env]]
+name = "NIXPACKS_PYTHON_VERSION"
+value = "3.8"

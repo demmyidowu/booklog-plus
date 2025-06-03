@@ -7,6 +7,18 @@ export default defineConfig({
   build: {
     outDir: 'dist',
     assetsDir: 'assets',
+    minify: 'esbuild',
+    target: 'esnext',
+    sourcemap: false,
+    chunkSizeWarningLimit: 1000,
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          vendor: ['react', 'react-dom'],
+        },
+        inlineDynamicImports: true,
+      },
+    },
   },
   define: {
     // This makes environment variables available to your app

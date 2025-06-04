@@ -116,7 +116,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
 
           <form onSubmit={handleSubmit} className="space-y-4">
             <Input id="name" name="name" type="text" placeholder="Your Name" value={formData.name} onChange={handleChange} />
-            <Input id="email" name="email" type="email" placeholder="your.email@university.edu" value={formData.email} onChange={handleChange} />
+            <Input id="email" name="email" type="email" placeholder="your-email@example.com" value={formData.email} onChange={handleChange} />
             <Input id="password" name="password" type="password" placeholder="Enter Password" value={formData.password} onChange={handleChange} />
             <Input id="confirmPassword" name="confirmPassword" type="password" placeholder="Confirm Password" value={formData.confirmPassword} onChange={handleChange} />
             <Button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white" disabled={loading}>Create Account</Button>

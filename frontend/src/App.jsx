@@ -16,6 +16,20 @@ import { Toaster } from "react-hot-toast"
 import "./index.css"
 
 function App() {
+
+  window.onerror = function (msg, url, lineNo, columnNo, error) {
+    console.log('ERROR DETAILS:', {
+      message: msg,
+      source: url,
+      line: lineNo,
+      column: columnNo,
+      error: error
+    });
+    return false;
+  }
+
+
+  const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(() => {
     return localStorage.getItem("currentPage") || "dashboard"
   })

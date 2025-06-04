@@ -14,8 +14,8 @@ export default function LogBook() {
   //trackEvent('LogBook', 'A Book Was Logged')
   const user = useUser()
   const [formData, setFormData] = useState({
-    title: "",
-    author: "",
+    book_name: "",
+    author_name: "",
     reflection: "",
   })
 
@@ -43,8 +43,8 @@ export default function LogBook() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           user_id: user.id,
-          title: formData.title,
-          author: formData.author,
+          book_name: formData.book_name,
+          author_name: formData.author_name,
           reflection: formData.reflection,
         }),
       })
@@ -61,13 +61,13 @@ export default function LogBook() {
 
       toast.success('Book logged successfully!')
       trackEvent('Books', 'Book Logged Successfully')
-      setFormData({ title: "", author: "", reflection: "" })
+      setFormData({ book_name: "", author_name: "", reflection: "" })
     } catch (err) {
       console.error("❌ Failed to log book:", err)
       trackError(err, {
         userId: user?.id,
-        bookName: formData.title,
-        authorName: formData.author,
+        book_name: formData.book_name,
+        author_name: formData.author_name,
         status: err.status,
         statusText: err.statusText
       }, 'LogBook')
@@ -87,13 +87,13 @@ export default function LogBook() {
       <Card className="border-slate-200">
         <form onSubmit={handleSubmit} className="p-6 space-y-4">
           <div>
-            <label htmlFor="title" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="book_name" className="block text-sm font-medium text-slate-700 mb-1">
               Book Title
             </label>
             <Input
-              id="title"
-              name="title"
-              value={formData.title}
+              id="book_name"
+              name="book_name"
+              value={formData.book_name}
               onChange={handleChange}
               placeholder="Enter the book title"
               required
@@ -101,13 +101,13 @@ export default function LogBook() {
           </div>
 
           <div>
-            <label htmlFor="author" className="block text-sm font-medium text-slate-700 mb-1">
+            <label htmlFor="author_name" className="block text-sm font-medium text-slate-700 mb-1">
               Author
             </label>
             <Input
-              id="author"
-              name="author"
-              value={formData.author}
+              id="author_name"
+              name="author_name"
+              value={formData.author_name}
               onChange={handleChange}
               placeholder="Enter the author's name"
               required

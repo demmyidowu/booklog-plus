@@ -12,6 +12,7 @@ import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
 import { trackPageView } from "./lib/analytics"  // Add this import
 import AnalyticsNotice from "./components/AnalyticsNotice"
+import { Toaster } from "react-hot-toast"
 import "./index.css"
 
 function App() {
@@ -71,6 +72,25 @@ function App() {
 
   return (
     <div className="flex h-screen">
+      <Toaster position="top-right" toastOptions={{
+        duration: 4000,
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        success: {
+          duration: 4000,
+          style: {
+            background: '#059669',
+          },
+        },
+        error: {
+          duration: 6000,
+          style: {
+            background: '#DC2626',
+          },
+        },
+      }} />
       {showLayout && <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />}
       <div className="flex-1 flex flex-col">
         {showLayout && (

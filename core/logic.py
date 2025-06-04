@@ -15,7 +15,7 @@ def save_book_entry(entry: dict, user_id: str) -> None:
     Save a new book entry to the user's library in Supabase.
     
     Args:
-        entry (dict): Book entry containing title, author, and reflection
+        entry (dict): Book entry containing book_name, author_name, and reflection
         user_id (str): Unique identifier for the user
         
     Raises:
@@ -23,8 +23,8 @@ def save_book_entry(entry: dict, user_id: str) -> None:
         
     Example:
         >>> entry = {
-        ...     "title": "1984",
-        ...     "author": "George Orwell",
+        ...     "book_name": "1984",
+        ...     "author_name": "George Orwell",
         ...     "reflection": "A thought-provoking dystopian novel"
         ... }
         >>> save_book_entry(entry, "user123")
@@ -43,13 +43,13 @@ def load_book_entries(user_id: str) -> list:
         user_id (str): Unique identifier for the user
         
     Returns:
-        list: Array of book entries, each containing title, author, and reflection.
+        list: Array of book entries, each containing book_name, author_name, and reflection.
               Returns empty list if no entries found or on error.
         
     Example:
         >>> entries = load_book_entries("user123")
         >>> for entry in entries:
-        ...     print(f"{entry['title']} by {entry['author']}")
+        ...     print(f"{entry['book_name']} by {entry['author_name']}")
     """
     response = supabase.table("book_logs").select("*").eq("user_id", user_id).execute()
     

@@ -36,9 +36,19 @@ function App() {
 
   const user = useUser()
 
+  useEffect(() => {
+    // Check URL on page load
+    const path = window.location.pathname;
+    if (path === '/signup') {
+      setCurrentPage('signup');
+    } else if (path === '/signin' || path === '/') {
+      setCurrentPage('signin');
+    }
+  }, []);
+
   // 📊 Track page views
   useEffect(() => {
-    //trackPageView(currentPage)
+    trackPageView(currentPage)
   }, [currentPage])
 
   // 🧠 Persist the page on change

@@ -107,7 +107,10 @@ export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
               Don't have an account?{" "}
               <button
                 type="button"
-                onClick={onNavigateToSignUp}
+                onClick={() => {
+                  console.log('Sign up button clicked!');
+                  onNavigateToSignUp();
+                }}
                 className="text-blue-600 hover:underline font-medium"
                 disabled={loading}
               >

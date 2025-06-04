@@ -10,13 +10,13 @@ import Header from "./pages/Header"
 import Sidebar from "./pages/Sidebar"
 import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
-import { trackPageView } from "./lib/analytics"  // Add this import
+import { trackPageView } from "./lib/analytics"
 import AnalyticsNotice from "./components/AnalyticsNotice"
 import { Toaster } from "react-hot-toast"
 import "./index.css"
 
 function App() {
-
+  // Error handler for debugging
   window.onerror = function (msg, url, lineNo, columnNo, error) {
     console.log('ERROR DETAILS:', {
       message: msg,
@@ -28,23 +28,25 @@ function App() {
     return false;
   }
 
-
   const [isLoading, setIsLoading] = useState(true)
   const [currentPage, setCurrentPage] = useState(() => {
     return localStorage.getItem("currentPage") || "dashboard"
   })
 
+  const user = useUser()
+
   // 🔗 Navigation handler that updates both state and URL
   const handleNavigation = (page) => {
     setCurrentPage(page);
     // Update browser URL without page reload
-    window.history.pushState({}, '', `/${page === 'signin' ? '' : page}`);
+    const url = page === 'signin' ? '/' : `/${page}`;
+    window.history.pushState({}, '', url);
+    // Also update localStorage
+    localStorage.setItem("currentPage", page);
   };
 
-  const user = useUser()
-
+  // 🔗 Read URL on page load and set appropriate page
   useEffect(() => {
-    // Read URL on page load and set appropriate page
     const path = window.location.pathname;
 
     switch (path) {
@@ -82,30 +84,28 @@ function App() {
 
   // 📊 Track page views
   useEffect(() => {
-    trackPageView(currentPage)
-  }, [currentPage])
-
-  // 🧠 Persist the page on change
-  useEffect(() => {
-    localStorage.setItem("currentPage", currentPage)
+    //trackPageView(currentPage)
   }, [currentPage])
 
   // 🔓 Sign out logic
   const handleSignOut = async () => {
     await supabase.auth.signOut()
     handleNavigation("signin")
-    localStorage.setItem("currentPage", "signin")
   }
 
   // 🧠 Render current page
   const renderPage = () => {
-
     switch (currentPage) {
-      case "dashboard": return <Dashboard />
-      case "log-book": return <LogBook />
-      case "history": return <History />
-      case "recommendations": return <Recommendations />
-      case "profile": return <Profile />
+      case "dashboard":
+        return <Dashboard />
+      case "log-book":
+        return <LogBook />
+      case "history":
+        return <History />
+      case "recommendations":
+        return <Recommendations />
+      case "profile":
+        return <Profile />
       case "signup":
         return <SignUpPage onNavigateToSignIn={() => handleNavigation("signin")} />
       case "signin":
@@ -120,16 +120,15 @@ function App() {
     }
   }
 
-
   // 🔐 Show layout only if signed in and not on auth pages
   const showLayout = !!user && !["signin", "signup"].includes(currentPage)
+
   console.log("Current Page:", currentPage)
   console.log("user:", user)
-  console.log("currentPage:", currentPage)
   console.log("showLayout:", showLayout)
 
   return (
-    <div className="flex h-screen">
+    <div className="min-h-screen bg-gray-50">
       <Toaster position="top-right" toastOptions={{
         duration: 4000,
         style: {
@@ -149,18 +148,29 @@ function App() {
           },
         },
       }} />
-      {showLayout && <Sidebar currentPage={currentPage} onNavigate={handleNavigation} />}
-      <div className="flex-1 flex flex-col">
+
+      {/* Sidebar - Now handles its own mobile responsiveness */}
+      {showLayout && (
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={handleNavigation}
+        />
+      )}
+
+      {/* Main Content Area */}
+      <div className={`${showLayout ? 'md:ml-64' : ''} min-h-screen flex flex-col`}>
         {showLayout && (
           <Header
             user={user.user_metadata?.name || "Reader"}
             onSignOut={handleSignOut}
           />
         )}
-        <main className="flex-1 overflow-auto bg-white p-6 text-black">
+
+        <main className={`flex-1 bg-white text-black ${showLayout ? 'p-6 md:p-6 pt-20 md:pt-6' : 'p-0'}`}>
           {renderPage() || <p>Nothing to render</p>}
         </main>
       </div>
+
       <AnalyticsNotice />
     </div>
   )

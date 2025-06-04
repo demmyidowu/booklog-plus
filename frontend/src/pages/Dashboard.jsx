@@ -188,7 +188,7 @@ export default function Dashboard() {
                 <Target className="h-5 w-5 text-green-600" />
               </div>
               <div>
-                <p className="text-sm text-slate-600">Reading Streak</p>
+                <p className="text-sm text-slate-600">Daily Logging Streak</p>
                 <p className="text-2xl font-bold text-slate-800">
                   {loading ? "..." : `${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
                 </p>

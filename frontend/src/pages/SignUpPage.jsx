@@ -30,6 +30,12 @@ export default function SignUpPage({ onNavigateToSignIn }) {
     setLoading(true)
 
     try {
+      // Check if passwords match
+      if (formData.password !== formData.confirmPassword) {
+        toast.error("Passwords do not match")
+        return
+      }
+
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
         email: formData.email,
         password: formData.password,
@@ -37,7 +43,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
           data: {
             name: formData.name,
           },
-          emailRedirectTo: "https://booklogplus.up.railway.app"
+          emailRedirectTo: window.location.origin
         },
       })
 
@@ -48,7 +54,17 @@ export default function SignUpPage({ onNavigateToSignIn }) {
       }
 
       const user = signUpData?.user
-      if (!user) return alert("Signup succeeded, but no user returned.")
+      if (!user) {
+        toast.error("Signup failed: No user data returned")
+        return
+      }
+
+      // Check if email confirmation is required
+      if (user.identities?.length === 0) {
+        toast.error("This email is already registered. Please sign in instead.")
+        onNavigateToSignIn()
+        return
+      }
 
       const { error: profileError } = await supabase.from("User_Profile").upsert([
         {
@@ -69,8 +85,12 @@ export default function SignUpPage({ onNavigateToSignIn }) {
       }
 
       trackEvent('Auth', 'Sign Up Successful')
-      toast.success("Account created! Check your email to verify your account.")
-      onNavigateToSignIn()
+      toast.success("Account created! Please check your email to verify your account.", {
+        duration: 6000 // Show for 6 seconds
+      })
+      setTimeout(() => {
+        onNavigateToSignIn()
+      }, 2000) // Wait 2 seconds before redirecting
     } catch (err) {
       trackError(err, { email: formData.email, name: formData.name }, 'SignUp')
       toast.error("An unexpected error occurred during sign up")

@@ -43,7 +43,7 @@ export default function SignUpPage({ onNavigateToSignIn }) {
           data: {
             name: formData.name,
           },
-          emailRedirectTo: window.location.origin
+          emailRedirectTo: `${window.location.origin}/signin`
         },
       })
 

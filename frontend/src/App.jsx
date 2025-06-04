@@ -1,278 +1,185 @@
-"use client"
-
-import { useState, useEffect } from "react"
-import { BookOpen, Eye, EyeOff } from "lucide-react"
+import { useEffect, useState } from "react"
+import Dashboard from "./pages/Dashboard"
+import LogBook from "./pages/LogBook"
+import History from "./pages/History"
+import Recommendations from "./pages/Recommendations"
+import Profile from "./pages/Profile"
+import SignInPage from "./pages/SignInPage"
+import SignUpPage from "./pages/SignUpPage"
+import UpdatePasswordPage from "./pages/UpdatePassword"
+import Header from "./pages/Header"
+import Sidebar from "./pages/Sidebar"
+import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
-import { trackEvent, trackError } from "./lib/analytics"
-import Button from "./components/Button"
-import Input from "./components/Input"
-import Card from "./components/Card"
-import { toast } from "react-hot-toast"
+import { trackPageView } from "./lib/analytics"
+import AnalyticsNotice from "./components/AnalyticsNotice"
+import { Toaster } from "react-hot-toast"
+import "./index.css"
 
-export default function UpdatePasswordPage({ onNavigateToSignIn }) {
-  const [formData, setFormData] = useState({
-    password: "",
-    confirmPassword: "",
+function App() {
+  // Error handler for debugging
+  window.onerror = function (msg, url, lineNo, columnNo, error) {
+    console.log('ERROR DETAILS:', {
+      message: msg,
+      source: url,
+      line: lineNo,
+      column: columnNo,
+      error: error
+    });
+    return false;
+  }
+
+  const [isLoading, setIsLoading] = useState(true)
+  const [currentPage, setCurrentPage] = useState(() => {
+    return localStorage.getItem("currentPage") || "dashboard"
   })
-  const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isValidSession, setIsValidSession] = useState(false)
-  const [isCheckingSession, setIsCheckingSession] = useState(true)
 
-  // Check if user has valid password reset session
+  const user = useUser()
+
+  // 🔗 Navigation handler that updates both state and URL
+  const handleNavigation = (page) => {
+    setCurrentPage(page);
+    // Update browser URL without page reload
+    const url = page === 'signin' ? '/' : `/${page}`;
+    window.history.pushState({}, '', url);
+    // Also update localStorage
+    localStorage.setItem("currentPage", page);
+  };
+
+  // 🔗 Read URL on page load and set appropriate page
   useEffect(() => {
-    const checkSession = async () => {
-      try {
-        const { data: { session }, error } = await supabase.auth.getSession()
+    const path = window.location.pathname;
 
-        if (error) {
-          console.error('Session check error:', error)
-          setIsValidSession(false)
-          toast.error("Invalid or expired reset link")
-          return
-        }
-
-        // Check if this is a password recovery session
-        if (session?.user) {
-          setIsValidSession(true)
+    switch (path) {
+      case '/':
+      case '/signin':
+        setCurrentPage('signin');
+        break;
+      case '/signup':
+        setCurrentPage('signup');
+        break;
+      case '/update-password':  // Add this case
+        setCurrentPage('update-password');
+        break;
+      case '/dashboard':
+        setCurrentPage('dashboard');
+        break;
+      case '/log-book':
+        setCurrentPage('log-book');
+        break;
+      case '/history':
+        setCurrentPage('history');
+        break;
+      case '/recommendations':
+        setCurrentPage('recommendations');
+        break;
+      case '/profile':
+        setCurrentPage('profile');
+        break;
+      default:
+        // If unknown path, redirect to appropriate default
+        if (user) {
+          handleNavigation('dashboard');
         } else {
-          setIsValidSession(false)
-          toast.error("Invalid or expired reset link. Please request a new one.")
+          handleNavigation('signin');
         }
-      } catch (err) {
-        console.error('Session check failed:', err)
-        setIsValidSession(false)
-        toast.error("Unable to verify reset link")
-      } finally {
-        setIsCheckingSession(false)
-      }
     }
+  }, [user]);
 
-    checkSession()
-  }, [])
+  // 📊 Track page views
+  useEffect(() => {
+    //trackPageView(currentPage)
+  }, [currentPage])
 
-  const handleChange = (e) => {
-    setFormData((prev) => ({
-      ...prev,
-      [e.target.name]: e.target.value,
-    }))
+  // 🔓 Sign out logic
+  const handleSignOut = async () => {
+    await supabase.auth.signOut()
+    handleNavigation("signin")
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
-
-    try {
-      // Validate password match
-      if (formData.password !== formData.confirmPassword) {
-        toast.error("Passwords do not match")
-        return
-      }
-
-      // Validate password strength
-      if (formData.password.length < 6) {
-        toast.error("Password must be at least 6 characters long")
-        return
-      }
-
-      // Update password
-      const { error } = await supabase.auth.updateUser({
-        password: formData.password
-      })
-
-      if (error) {
-        trackError(error, { action: 'password_update' }, 'UpdatePassword')
-        toast.error("Failed to update password: " + error.message)
-        return
-      }
-
-      trackEvent('Auth', 'Password Updated Successfully')
-      toast.success("Password updated successfully! Redirecting to sign in...")
-
-      // Sign out and redirect to sign in
-      await supabase.auth.signOut()
-
-      setTimeout(() => {
-        onNavigateToSignIn()
-      }, 2000)
-
-    } catch (err) {
-      trackError(err, { action: 'password_update' }, 'UpdatePassword')
-      toast.error("An unexpected error occurred")
-    } finally {
-      setLoading(false)
+  // 🧠 Render current page
+  const renderPage = () => {
+    switch (currentPage) {
+      case "dashboard":
+        return <Dashboard />
+      case "log-book":
+        return <LogBook />
+      case "history":
+        return <History />
+      case "recommendations":
+        return <Recommendations />
+      case "profile":
+        return <Profile />
+      case "signup":
+        return <SignUpPage onNavigateToSignIn={() => handleNavigation("signin")} />
+      case "signin":
+        return (
+          <SignInPage
+            onNavigateToSignUp={() => handleNavigation("signup")}
+            onSignIn={() => handleNavigation("dashboard")}
+          />
+        )
+      case "update-password":  // Add this case
+        return <UpdatePasswordPage onNavigateToSignIn={() => handleNavigation("signin")} />
+      default:
+        return <Dashboard />
     }
   }
 
-  const handleRequestNewLink = async () => {
-    const email = prompt("Enter your email address to request a new reset link:")
-    if (!email) return
+  // 🔐 Show layout only if signed in and not on auth pages
+  const showLayout = !!user && !["signin", "signup", "update-password"].includes(currentPage)  // Add update-password here
 
-    try {
-      const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
-      })
+  console.log("Current Page:", currentPage)
+  console.log("user:", user)
+  console.log("showLayout:", showLayout)
 
-      if (error) {
-        trackError(error, { email }, 'PasswordReset')
-        toast.error("Failed to send reset link: " + error.message)
-        return
-      }
-
-      trackEvent('Auth', 'New Password Reset Requested')
-      toast.success("New reset link sent! Check your email.")
-    } catch (err) {
-      trackError(err, { email }, 'PasswordReset')
-      toast.error("Failed to request new reset link")
-    }
-  }
-
-  // Show loading spinner while checking session
-  if (isCheckingSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg border-0">
-          <div className="p-6 text-center">
-            <div className="flex items-center justify-center gap-2 text-blue-700 mb-4">
-              <BookOpen className="h-8 w-8" />
-              <h1 className="text-2xl font-bold">BookLog+</h1>
-            </div>
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto"></div>
-            <p className="text-slate-600 mt-4">Verifying reset link...</p>
-          </div>
-        </Card>
-      </div>
-    )
-  }
-
-  // Show error if invalid session
-  if (!isValidSession) {
-    return (
-      <div className="min-h-screen flex items-center justify-center p-4">
-        <Card className="w-full max-w-md shadow-lg border-0">
-          <div className="p-6 text-center">
-            <div className="flex items-center justify-center gap-2 text-blue-700 mb-6">
-              <BookOpen className="h-8 w-8" />
-              <h1 className="text-2xl font-bold">BookLog+</h1>
-            </div>
-
-            <div className="space-y-4">
-              <h2 className="text-xl text-slate-800 font-semibold">Reset Link Invalid</h2>
-              <p className="text-slate-600">
-                This password reset link has expired or is invalid. Please request a new one.
-              </p>
-
-              <div className="space-y-3">
-                <Button
-                  onClick={handleRequestNewLink}
-                  className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-                >
-                  Request New Reset Link
-                </Button>
-
-                <Button
-                  onClick={onNavigateToSignIn}
-                  className="w-full bg-slate-100 hover:bg-slate-200 text-slate-700"
-                >
-                  Back to Sign In
-                </Button>
-              </div>
-            </div>
-          </div>
-        </Card>
-      </div>
-    )
-  }
-
-  // Show password update form
   return (
-    <div className="min-h-screen flex items-center justify-center p-4">
-      <Card className="w-full max-w-md shadow-lg border-0">
-        <div className="p-6">
-          <div className="text-center space-y-4 mb-6">
-            <div className="flex items-center justify-center gap-2 text-blue-700">
-              <BookOpen className="h-8 w-8" />
-              <h1 className="text-2xl font-bold">BookLog+</h1>
-            </div>
-            <div>
-              <h2 className="text-xl text-slate-800 font-semibold">Update Your Password</h2>
-              <p className="text-slate-600 mt-2">Enter your new password below</p>
-            </div>
-          </div>
+    <div className="min-h-screen bg-gray-50">
+      <Toaster position="top-right" toastOptions={{
+        duration: 4000,
+        style: {
+          background: '#333',
+          color: '#fff',
+        },
+        success: {
+          duration: 4000,
+          style: {
+            background: '#059669',
+          },
+        },
+        error: {
+          duration: 6000,
+          style: {
+            background: '#DC2626',
+          },
+        },
+      }} />
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="relative">
-              <Input
-                id="password"
-                name="password"
-                type={showPassword ? "text" : "password"}
-                placeholder="Enter new password"
-                value={formData.password}
-                onChange={handleChange}
-                disabled={loading}
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+      {/* Sidebar - Now handles its own mobile responsiveness */}
+      {showLayout && (
+        <Sidebar
+          currentPage={currentPage}
+          onNavigate={handleNavigation}
+        />
+      )}
 
-            <div className="relative">
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showConfirmPassword ? "text" : "password"}
-                placeholder="Confirm new password"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                disabled={loading}
-                required
-                minLength={6}
-              />
-              <button
-                type="button"
-                onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                className="absolute right-3 top-1/2 transform -translate-y-1/2 text-slate-400 hover:text-slate-600"
-              >
-                {showConfirmPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
-            </div>
+      {/* Main Content Area */}
+      <div className={`${showLayout ? 'md:ml-64' : ''} min-h-screen flex flex-col`}>
+        {showLayout && (
+          <Header
+            user={user.user_metadata?.name || "Reader"}
+            onSignOut={handleSignOut}
+          />
+        )}
 
-            <div className="text-sm text-slate-600 space-y-1">
-              <p>Password requirements:</p>
-              <ul className="list-disc list-inside text-xs space-y-1">
-                <li>At least 6 characters long</li>
-                <li>Should be unique and secure</li>
-              </ul>
-            </div>
+        <main className={`flex-1 bg-white text-black ${showLayout ? 'p-6 md:p-6 pt-20 md:pt-6' : 'p-0'}`}>
+          {renderPage() || <p>Nothing to render</p>}
+        </main>
+      </div>
 
-            <Button
-              type="submit"
-              className="w-full bg-blue-600 hover:bg-blue-700 text-white"
-              disabled={loading || !formData.password || !formData.confirmPassword}
-            >
-              {loading ? "Updating Password..." : "Update Password"}
-            </Button>
-
-            <div className="text-center">
-              <button
-                type="button"
-                onClick={onNavigateToSignIn}
-                className="text-sm text-slate-600 hover:text-blue-600 hover:underline"
-                disabled={loading}
-              >
-                Back to Sign In
-              </button>
-            </div>
-          </form>
-        </div>
-      </Card>
+      <AnalyticsNotice />
     </div>
   )
 }
+
+export default App

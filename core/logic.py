@@ -29,12 +29,35 @@ def save_book_entry(entry: dict, user_id: str) -> None:
         ... }
         >>> save_book_entry(entry, "user123")
     """
-    entry["user_id"] = user_id
-    response = supabase.table("book_logs").insert(entry).execute()
-    
-    if not response.data:
-        raise Exception("❌ Insert failed: No data returned from Supabase")
+    try:
+        print("📚 Attempting to save book entry:", entry)  # Debug log
         
+        # Ensure all required fields are present
+        required_fields = ["book_name", "author_name", "reflection"]
+        missing_fields = [field for field in required_fields if field not in entry]
+        if missing_fields:
+            raise Exception(f"Missing required fields: {', '.join(missing_fields)}")
+            
+        # Add user_id to entry
+        entry["user_id"] = user_id
+        print("👤 Added user_id to entry:", entry)  # Debug log
+        
+        # Attempt to insert into Supabase
+        response = supabase.table("book_logs").insert(entry).execute()
+        print("📡 Supabase response:", response)  # Debug log
+        
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        if not response.data:
+            raise Exception("❌ Insert failed: No data returned from Supabase")
+            
+        print("✅ Book entry saved successfully:", response.data)  # Debug log
+    except Exception as e:
+        print(f"❌ Error in save_book_entry: {str(e)}")  # Debug log
+        raise
+
 def load_book_entries(user_id: str) -> list:
     """
     Retrieve all book entries for a specific user from Supabase.

@@ -65,8 +65,8 @@ def add_book():
     Expects a JSON payload with the following structure:
     {
         "user_id": "string",
-        "title": "string",
-        "author": "string",
+        "book_name": "string",
+        "author_name": "string",
         "reflection": "string"
     }
     
@@ -87,14 +87,25 @@ def add_book():
             return jsonify({"message": "Missing userID"}), 400
         
         # Validate incoming data against schema
-        validated = schema.load(data)
+        try:
+            validated = schema.load(data)
+            print("✅ Validated data:", validated)  # Debug log
+        except ValidationError as err:
+            print("❌ Validation error:", err.messages)  # Debug log
+            return jsonify({"error": err.messages}), 400
         
         # Save validated book entry to storage
-        save_book_entry(validated, user_id)
-        return jsonify({"message": "Book saved successfully!"}), 200
+        try:
+            save_book_entry(validated, user_id)
+            print("✅ Book saved successfully")  # Debug log
+            return jsonify({"message": "Book saved successfully!"}), 200
+        except Exception as e:
+            print("❌ Save error:", str(e))  # Debug log
+            raise
     except ValidationError as err:
         return jsonify({"error": err.messages}), 400
     except Exception as e:
+        print("❌ Unexpected error:", str(e))  # Debug log
         return jsonify({"message": str(e)}), 500
 
 @app.route("/books", methods=["GET"])

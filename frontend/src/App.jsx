@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react"
 import { BookOpen, Eye, EyeOff } from "lucide-react"
-import { supabase } from "../lib/supabase"
-import { trackEvent, trackError } from '../lib/analytics'
+import { supabase } from "./lib/supabase"
+import { trackEvent, trackError } from "./lib/analytics"
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"

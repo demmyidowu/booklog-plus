@@ -34,17 +34,51 @@ function App() {
     return localStorage.getItem("currentPage") || "dashboard"
   })
 
+  // 🔗 Navigation handler that updates both state and URL
+  const handleNavigation = (page) => {
+    setCurrentPage(page);
+    // Update browser URL without page reload
+    window.history.pushState({}, '', `/${page === 'signin' ? '' : page}`);
+  };
+
   const user = useUser()
 
   useEffect(() => {
-    // Check URL on page load
+    // Read URL on page load and set appropriate page
     const path = window.location.pathname;
-    if (path === '/signup') {
-      setCurrentPage('signup');
-    } else if (path === '/signin' || path === '/') {
-      setCurrentPage('signin');
+
+    switch (path) {
+      case '/':
+      case '/signin':
+        setCurrentPage('signin');
+        break;
+      case '/signup':
+        setCurrentPage('signup');
+        break;
+      case '/dashboard':
+        setCurrentPage('dashboard');
+        break;
+      case '/log-book':
+        setCurrentPage('log-book');
+        break;
+      case '/history':
+        setCurrentPage('history');
+        break;
+      case '/recommendations':
+        setCurrentPage('recommendations');
+        break;
+      case '/profile':
+        setCurrentPage('profile');
+        break;
+      default:
+        // If unknown path, redirect to appropriate default
+        if (user) {
+          handleNavigation('dashboard');
+        } else {
+          handleNavigation('signin');
+        }
     }
-  }, []);
+  }, [user]);
 
   // 📊 Track page views
   useEffect(() => {
@@ -59,7 +93,7 @@ function App() {
   // 🔓 Sign out logic
   const handleSignOut = async () => {
     await supabase.auth.signOut()
-    setCurrentPage("signin")
+    handleNavigation("signin")
     localStorage.setItem("currentPage", "signin")
   }
 
@@ -73,12 +107,12 @@ function App() {
       case "recommendations": return <Recommendations />
       case "profile": return <Profile />
       case "signup":
-        return <SignUpPage onNavigateToSignIn={() => setCurrentPage("signin")} />
+        return <SignUpPage onNavigateToSignIn={() => handleNavigation("signin")} />
       case "signin":
         return (
           <SignInPage
-            onNavigateToSignUp={() => setCurrentPage("signup")}
-            onSignIn={() => setCurrentPage("dashboard")}
+            onNavigateToSignUp={() => handleNavigation("signup")}
+            onSignIn={() => handleNavigation("dashboard")}
           />
         )
       default:
@@ -115,7 +149,7 @@ function App() {
           },
         },
       }} />
-      {showLayout && <Sidebar currentPage={currentPage} onNavigate={setCurrentPage} />}
+      {showLayout && <Sidebar currentPage={currentPage} onNavigate={handleNavigation} />}
       <div className="flex-1 flex flex-col">
         {showLayout && (
           <Header

@@ -10,7 +10,7 @@ import Card from "./components/Card"
 import { toast } from "react-hot-toast"
 import { getApiUrl } from "../config"
 
-export default function LogBook() {
+export default function LogBook({ onNavigate }) {
   //trackEvent('LogBook', 'A Book Was Logged')
   const user = useUser()
   const [formData, setFormData] = useState({
@@ -59,9 +59,28 @@ export default function LogBook() {
       const result = await response.json()
       console.log("✅ Book saved:", result)
 
-      toast.success('Book logged successfully!')
+      toast.success('Book logged successfully!', {
+        duration: 3000,
+        style: {
+          background: '#059669',
+        },
+      })
       trackEvent('Books', 'Book Logged Successfully')
       setFormData({ book_name: "", author_name: "", reflection: "" })
+
+      setTimeout(() => {
+        toast.success("Based on your reading, here are some perfect recommendations! ✨", {
+          duration: 4000,
+          style: {
+            background: '#7C3AED',
+          },
+        })
+        if (onNavigate) {
+          onNavigate('recommendations?auto=true')
+        }
+      }, 1500) // 1.5 second delay for smooth transition
+
+
     } catch (err) {
       console.error("❌ Failed to log book:", err)
       trackError(err, {

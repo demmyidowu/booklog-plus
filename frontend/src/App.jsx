@@ -103,7 +103,7 @@ function App() {
       case "dashboard":
         return <Dashboard />
       case "log-book":
-        return <LogBook />
+        return <LogBook onNavigate={handleNavigation} />
       case "history":
         return <History />
       case "recommendations":
@@ -119,7 +119,7 @@ function App() {
             onSignIn={() => handleNavigation("dashboard")}
           />
         )
-      case "update-password":  // Add this case
+      case "update-password":
         return <UpdatePasswordPage onNavigateToSignIn={() => handleNavigation("signin")} />
       default:
         return <Dashboard />
@@ -127,7 +127,7 @@ function App() {
   }
 
   // 🔐 Show layout only if signed in and not on auth pages
-  const showLayout = !!user && !["signin", "signup", "update-password"].includes(currentPage)  // Add update-password here
+  const showLayout = !!user && !["signin", "signup", "update-password"].includes(currentPage)
 
   console.log("Current Page:", currentPage)
   console.log("user:", user)

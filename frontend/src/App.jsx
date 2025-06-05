@@ -58,6 +58,7 @@ function App() {
   // 🔗 Read URL on page load and set appropriate page
   useEffect(() => {
     const path = window.location.pathname;
+    const searchParams = new URLSearchParams(window.location.search);
 
     switch (path) {
       case '/':
@@ -146,7 +147,7 @@ function App() {
   console.log("showWelcome:", showWelcome)
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gray-50 flex">
       <Toaster position="top-right" toastOptions={{
         duration: 4000,
         style: {
@@ -185,7 +186,7 @@ function App() {
       )}
 
       {/* Main Content Area */}
-      <div className={`${showLayout ? 'md:ml-64' : ''} min-h-screen flex flex-col`}>
+      <div className={"flex-1 min-h-screen flex flex-col"}>
         {showLayout && (
           <Header
             user={user.user_metadata?.name || "Reader"}

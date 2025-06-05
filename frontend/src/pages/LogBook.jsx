@@ -76,7 +76,17 @@ export default function LogBook({ onNavigate, isFirstTime }) {
           },
         })
         if (onNavigate) {
-          onNavigate('recommendations?auto=true')
+          // Set a flag in localStorage that Recommendations can check
+          localStorage.setItem('autoFetchRecommendations', 'true')
+
+          // Set URL and navigate
+          const url = new URL(window.location)
+          url.pathname = '/recommendations'
+          window.history.replaceState({}, '', url.toString())
+
+          setTimeout(() => {
+            onNavigate('recommendations')
+          }, 50)
         }
       }, 1500) // 1.5 second delay for smooth transition
 
@@ -184,7 +194,7 @@ export default function LogBook({ onNavigate, isFirstTime }) {
             disabled={loading || !user}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {loading ? "Saving..." : isFirstTime ? "Log First Book & Get Recommendations" : "Log Book & Get Recommendations"}
+            {loading ? "Saving..." : isFirstTime ? "Log First Book" : "Log Book"}
           </Button>
           {loading && (
             <p className="text-center text-sm text-slate-600 mt-2">

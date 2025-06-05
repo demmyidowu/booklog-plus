@@ -14,11 +14,10 @@ Endpoints:
 
 import json
 import os
-from core.logic import load_book_entries, save_book_entry
 from api.rec_engine import get_recommendations
-from flask import Flask, request, jsonify, redirect, send_from_directory
+from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from core.logic import save_book_entry, load_book_entries
+from core.logic import save_book_entry, load_book_entries, delete_book_entry
 from data.schema import BooksSchema, ValidationError
 from dotenv import load_dotenv
 
@@ -34,27 +33,14 @@ if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
     CORS(app, supports_credentials=True)
 else:
     # In development, use allowed origins from env
-    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000').split(',')
+    allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5001,http://127.0.0.1:5001').split(',')
     CORS(app, resources={
         r"/*": {
             "origins": allowed_origins,
-            "methods": ["GET", "POST", "OPTIONS"],
+            "methods": ["GET", "POST", "DELETE", "OPTIONS"],
             "allow_headers": ["Content-Type", "Authorization"]
         }
     })
-
-# Serve the React application
-@app.route('/')
-@app.route('/dashboard')
-@app.route('/log-book')
-@app.route('/history')
-@app.route('/recommendations')
-@app.route('/profile')
-@app.route('/signin')
-@app.route('/signup')
-def serve():
-    """Serve the React application"""
-    return send_from_directory(app.static_folder, 'index.html')
 
 
 @app.route("/add", methods=["POST"])        
@@ -133,6 +119,62 @@ def get_books():
         return jsonify(entries), 200
     except Exception as e:
         return jsonify({"message": str(e)}), 500
+    
+@app.route("/books/delete", methods=["DELETE"])
+def delete_book():
+    """
+    Delete a specific book entry from the user's library by book details.
+        
+    Expects a JSON payload with:
+    {
+        "user_id": "string",
+        "book_name": "string", 
+        "author_name": "string"
+    }
+        
+    Returns:
+        JSON response with success message or error details
+        Status codes:
+            200: Success
+            400: Missing required parameters
+            404: Book not found or not owned by user
+            500: Server error
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+            
+        user_id = data.get("user_id")
+        book_name = data.get("book_name")
+        author_name = data.get("author_name")
+        
+        if not user_id:
+            return jsonify({"message": "Missing user_id parameter"}), 400
+            
+        if not book_name:
+            return jsonify({"message": "Missing book_name parameter"}), 400
+            
+        if not author_name:
+            return jsonify({"message": "Missing author_name parameter"}), 400
+        
+        # Attempt to delete the book entry
+        try:
+            success = delete_book_entry(book_name, author_name, user_id)
+            if success:
+                print("✅ Book deleted successfully")  # Debug log
+                return jsonify({"message": "Book deleted successfully"}), 200
+            else:
+                return jsonify({"message": "Book not found or not owned by user"}), 404
+        except Exception as e:
+            print("❌ Delete error:", str(e))  # Debug log
+            raise
+            
+    except Exception as e:
+        print("❌ Unexpected error in delete_book:", str(e))  # Debug log
+        return jsonify({"message": str(e)}), 500
+
 
 @app.route("/recommend", methods=["GET"])
 def recommend():
@@ -176,6 +218,18 @@ def recommend():
     except Exception as e:
         return jsonify({"error": str(e)}), 500
     
+# Serve the React application
+@app.route('/')
+@app.route('/dashboard')
+@app.route('/log-book')
+@app.route('/history')
+@app.route('/recommendations')
+@app.route('/profile')
+@app.route('/signin')
+@app.route('/signup')
+def serve():
+    """Serve the React application"""
+    return send_from_directory(app.static_folder, 'index.html')
 
 # Serve static files
 @app.route("/<path:path>")

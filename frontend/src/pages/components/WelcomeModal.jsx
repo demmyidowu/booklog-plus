@@ -19,7 +19,7 @@ export default function WelcomeModal({ isOpen, onClose, onGetStarted, userName }
             title: "Log Your First Book",
             description: "Start by adding a book you've recently read and loved.",
             detail: "Share what you thought about it - this helps our AI understand your taste and recommend perfect books for you.",
-            buttonText: "Log my first book"
+            buttonText: "What's Next?"
         },
         {
             icon: TrendingUp,
@@ -99,7 +99,7 @@ export default function WelcomeModal({ isOpen, onClose, onGetStarted, userName }
                             {currentStep > 0 && (
                                 <Button
                                     onClick={() => setCurrentStep(currentStep - 1)}
-                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-white-700"
                                 >
                                     Back
                                 </Button>

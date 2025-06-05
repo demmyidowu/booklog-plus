@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useUser } from '../pages/UserContext'
 import { supabase } from '../lib/supabase'
 import { trackEvent } from '../lib/analytics'
+import { getApiUrl } from '../config'
 
 export function useFirstTimeUser() {
     const user = useUser()
@@ -20,19 +21,16 @@ export function useFirstTimeUser() {
 
     const checkFirstTimeUser = async () => {
         try {
-            // Check if user has logged any books
-            const { data: books, error } = await supabase
-                .from('books')
-                .select('id')
-                .eq('user_id', user.id)
-                .limit(1)
+            // Check if user has logged any books using Flask API
+            const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
 
-            if (error) {
-                console.error('Error checking books:', error)
+            if (!response.ok) {
+                console.error('Error checking books: HTTP', response.status)
                 setLoading(false)
                 return
             }
 
+            const books = await response.json()
             const hasBooks = books && books.length > 0
             const isFirstTimeUser = !hasBooks
 

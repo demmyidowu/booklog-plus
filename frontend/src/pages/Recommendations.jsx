@@ -70,17 +70,15 @@ export default function Recommendations() {
     }
 
     // Check if we should auto-fetch (coming from successful book log)
-    const urlParams = new URLSearchParams(window.location.search)
-    const shouldAutoFetch = urlParams.get('auto') === 'true'
-
-    if (shouldAutoFetch && !hasRequested) {
-      // Clear the URL parameter to avoid refetching on refresh
-      window.history.replaceState({}, '', window.location.pathname)
-      fetchRecommendations()
+    const checkAutoFetch = () => {
+      const shouldAutoFetch = localStorage.getItem('autoFetchRecommendations') === 'true'
+      if (shouldAutoFetch) {
+        localStorage.removeItem('autoFetchRecommendations')
+        fetchRecommendations()
+      }
     }
 
-
-
+    checkAutoFetch()
   }, [user, hasRequested])
 
   // Handle quick-log modal
@@ -330,7 +328,7 @@ export default function Recommendations() {
                     type="button"
                     onClick={closeQuickLog}
                     disabled={quickLogLoading}
-                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300"
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-white-800 border border-slate-300"
                   >
                     Cancel
                   </Button>

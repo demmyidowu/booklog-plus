@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, Search, Calendar } from "lucide-react"
+import { BookOpen, Search, Calendar, Trash2 } from "lucide-react"
 import Card from "./components/Card"
 import Badge from "./components/Badge"
 import Input from "./components/Input"
@@ -13,6 +13,7 @@ export default function History() {
   const [searchTerm, setSearchTerm] = useState("")
   const [books, setBooks] = useState([])
   const [loading, setLoading] = useState(true)
+  const [deleting, setDeleting] = useState(null)
 
   useEffect(() => {
     async function fetchBooks() {
@@ -33,6 +34,42 @@ export default function History() {
 
     fetchBooks()
   }, [user])
+
+  const handleDelete = async (book) => {
+    if (!confirm("Are you sure you want to delete this book entry? This action cannot be undone.")) {
+      return
+    }
+
+    const deleteKey = `${book.book_name}-${book.author_name}`
+    setDeleting(deleteKey)
+
+    try {
+      const response = await fetch(getApiUrl('books/delete'), {
+        method: 'DELETE',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          book_name: book.book_name,
+          author_name: book.author_name
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to delete book')
+      }
+
+      // Remove the book from local state
+      setBooks(books.filter(b => !(b.book_name === book.book_name && b.author_name === book.author_name)))
+    } catch (err) {
+      console.error("❌ Failed to delete book:", err)
+      alert("Failed to delete book. Please try again.")
+    } finally {
+      setDeleting(null)
+    }
+  }
 
   const filteredBooks = books.filter((book) => {
     return (
@@ -81,9 +118,23 @@ export default function History() {
             </Card>
           ) : (
             filteredBooks.map((book) => (
-              <Card key={book.id} className="border-slate-200">
+              <Card key={book.id} className="border-slate-200 relative">
                 <div className="p-6">
                   <div className="flex gap-4">
+                    {/* Delete button */}
+                    <button
+                      onClick={() => handleDelete(book)}
+                      disabled={deleting === `${book.book_name}-${book.author_name}`}
+                      className="absolute top-4 right-4 p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 shadow-md border border-slate-300 bg-white z-10"
+                      title="Delete book entry"
+                      style={{ opacity: 1 }}
+                    >
+                      {deleting === `${book.book_name}-${book.author_name}` ? (
+                        <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                      ) : (
+                        <Trash2 className="h-4 w-4" />
+                      )}
+                    </button>
                     <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <BookOpen className="h-5 w-5 text-white" />
                     </div>

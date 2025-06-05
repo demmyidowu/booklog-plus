@@ -86,6 +86,49 @@ def load_book_entries(user_id: str) -> list:
         print(f"❌ Exception in load_book_entries: {str(e)}")
         return []
 
+def delete_book_entry(book_name: str, author_name: str, user_id: str) -> bool:
+    """
+    Delete a specific book entry from the user's library in Supabase by book details.
+    
+    Args:
+        book_name (str): Title of the book to delete
+        author_name (str): Author of the book to delete
+        user_id (str): Unique identifier for the user (for security)
+        
+    Returns:
+        bool: True if deletion was successful, False otherwise
+        
+    Raises:
+        Exception: If the Supabase delete operation fails
+        
+    Example:
+        >>> success = delete_book_entry_by_details("1984", "George Orwell", "user456")
+        >>> if success:
+        ...     print("Book deleted successfully")
+    """
+    try:
+        print(f"🗑️ Attempting to delete book '{book_name}' by '{author_name}' for user {user_id}")  # Debug log
+        
+        # Delete the book entry by matching book_name, author_name, and user_id
+        response = supabase.table("book_logs").delete().eq("book_name", book_name).eq("author_name", author_name).eq("user_id", user_id).execute()
+        print("📡 Supabase delete response:", response)  # Debug log
+        
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        # Check if any rows were affected
+        if response.data and len(response.data) > 0:
+            print("✅ Book entry deleted successfully:", response.data)  # Debug log
+            return True
+        else:
+            print("⚠️ No book entry found to delete (may not exist or not owned by user)")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error in delete_book_entry_by_details: {str(e)}")  # Debug log
+        raise
+
 def get_user_name(user_id: str) -> str | None:
     """
     Retrieve the user's name from their profile in Supabase.

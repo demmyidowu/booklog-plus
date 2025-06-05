@@ -13,6 +13,8 @@ import { useUser } from "./pages/UserContext"
 import { supabase } from "./lib/supabase"
 import { trackPageView } from "./lib/analytics"
 import AnalyticsNotice from "./components/AnalyticsNotice"
+import WelcomeModal from "./pages/components/WelcomeModal"
+import { useFirstTimeUser } from "./hooks/useFirstTimeUser"
 import { Toaster } from "react-hot-toast"
 import "./index.css"
 
@@ -35,6 +37,7 @@ function App() {
   })
 
   const user = useUser()
+  const { isFirstTime, showWelcome, markWelcomeShown, skipWelcome } = useFirstTimeUser()
 
   // 🔗 Navigation handler that updates both state and URL
   const handleNavigation = (page) => {
@@ -45,6 +48,12 @@ function App() {
     // Also update localStorage
     localStorage.setItem("currentPage", page);
   };
+
+  // 🎯 Handle welcome flow completion
+  const handleWelcomeGetStarted = () => {
+    markWelcomeShown()
+    handleNavigation('log-book')
+  }
 
   // 🔗 Read URL on page load and set appropriate page
   useEffect(() => {
@@ -79,12 +88,13 @@ function App() {
       default:
         // If unknown path, redirect to appropriate default
         if (user) {
-          handleNavigation('dashboard');
+          // 🎯 For first-time users, show welcome modal
+          handleNavigation(isFirstTime ? 'dashboard' : 'dashboard');
         } else {
           handleNavigation('signin');
         }
     }
-  }, [user]);
+  }, [user, isFirstTime]);
 
   // 📊 Track page views
   useEffect(() => {
@@ -101,9 +111,9 @@ function App() {
   const renderPage = () => {
     switch (currentPage) {
       case "dashboard":
-        return <Dashboard />
+        return <Dashboard isFirstTime={isFirstTime} />
       case "log-book":
-        return <LogBook onNavigate={handleNavigation} />
+        return <LogBook onNavigate={handleNavigation} isFirstTime={isFirstTime} />
       case "history":
         return <History />
       case "recommendations":
@@ -122,7 +132,7 @@ function App() {
       case "update-password":
         return <UpdatePasswordPage onNavigateToSignIn={() => handleNavigation("signin")} />
       default:
-        return <Dashboard />
+        return <Dashboard isFirstTime={isFirstTime} />
     }
   }
 
@@ -132,6 +142,8 @@ function App() {
   console.log("Current Page:", currentPage)
   console.log("user:", user)
   console.log("showLayout:", showLayout)
+  console.log("isFirstTime:", isFirstTime)
+  console.log("showWelcome:", showWelcome)
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -154,6 +166,15 @@ function App() {
           },
         },
       }} />
+
+
+      {/* Welcome Modal */}
+      <WelcomeModal
+        isOpen={showWelcome}
+        onClose={skipWelcome}
+        onGetStarted={handleWelcomeGetStarted}
+        userName={user?.user_metadata?.name}
+      />
 
       {/* Sidebar - Now handles its own mobile responsiveness */}
       {showLayout && (

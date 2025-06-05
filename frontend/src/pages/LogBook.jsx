@@ -10,7 +10,7 @@ import Card from "./components/Card"
 import { toast } from "react-hot-toast"
 import { getApiUrl } from "../config"
 
-export default function LogBook({ onNavigate }) {
+export default function LogBook({ onNavigate, isFirstTime }) {
   //trackEvent('LogBook', 'A Book Was Logged')
   const user = useUser()
   const [formData, setFormData] = useState({
@@ -98,9 +98,38 @@ export default function LogBook({ onNavigate }) {
 
   return (
     <div className="p-6 max-w-2xl mx-auto">
+      {/* First-time user progress indicator */}
+      {isFirstTime && (
+        <div className="mb-6 p-4 bg-blue-50 border-l-4 border-blue-400 rounded-r-lg">
+          <div className="flex items-center">
+            <div className="flex-shrink-0">
+              <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                <span className="text-blue-600 font-semibold text-sm">1</span>
+              </div>
+            </div>
+            <div className="ml-3">
+              <h3 className="text-sm font-medium text-blue-800">
+                Step 1: Log Your First Book
+              </h3>
+              <p className="text-sm text-blue-600 mt-1">
+                Tell us about a book you've recently read to get personalized recommendations
+              </p>
+            </div>
+          </div>
+        </div>
+      )}
+
+
       <div className="text-center mb-6">
-        <h1 className="text-3xl font-bold text-slate-800 mb-3">Log a New Book</h1>
-        <p className="text-slate-600">Record your reading journey and reflections</p>
+        <h1 className="text-3xl font-bold text-slate-800 mb-3">
+          {isFirstTime ? "Log Your First Book" : "Log a New Book"}
+        </h1>
+        <p className="text-slate-600">
+          {isFirstTime
+            ? "Start your reading journey and get personalized recommendations"
+            : "Record your reading journey and get personalized recommendations"
+          }
+        </p>
       </div>
 
       <Card className="border-slate-200">
@@ -116,6 +145,7 @@ export default function LogBook({ onNavigate }) {
               onChange={handleChange}
               placeholder="Enter the book title"
               required
+              disabled={loading}
             />
           </div>
 
@@ -130,6 +160,7 @@ export default function LogBook({ onNavigate }) {
               onChange={handleChange}
               placeholder="Enter the author's name"
               required
+              disabled={loading}
             />
           </div>
 
@@ -144,6 +175,7 @@ export default function LogBook({ onNavigate }) {
               onChange={handleChange}
               placeholder="Share your thoughts about the book..."
               required
+              disabled={loading}
             />
           </div>
 
@@ -152,8 +184,16 @@ export default function LogBook({ onNavigate }) {
             disabled={loading || !user}
             className="w-full bg-blue-600 hover:bg-blue-700 text-white"
           >
-            {loading ? "Saving..." : "Save Book"}
+            {loading ? "Saving..." : isFirstTime ? "Log First Book & Get Recommendations" : "Log Book & Get Recommendations"}
           </Button>
+          {loading && (
+            <p className="text-center text-sm text-slate-600 mt-2">
+              {isFirstTime
+                ? "Great choice! We'll show you amazing recommendations next! ✨"
+                : "We'll show you personalized recommendations next! ✨"
+              }
+            </p>
+          )}
         </form>
       </Card>
     </div>

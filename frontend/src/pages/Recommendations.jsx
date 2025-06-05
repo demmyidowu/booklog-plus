@@ -127,7 +127,7 @@ export default function Recommendations() {
       toast.success(`"${selectedBook.title}" logged successfully! 📚`, {
         duration: 3000,
         style: {
-          background: '#059669',
+          background: '#7C3AED',
         },
       })
 
@@ -224,7 +224,7 @@ export default function Recommendations() {
                           {/* Quick Log Button */}
                           <Button
                             onClick={() => openQuickLog(book)}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white text-sm"
+                            className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm"
                           >
                             <Plus className="h-4 w-4 mr-2" />
                             I've read this!
@@ -330,14 +330,14 @@ export default function Recommendations() {
                     type="button"
                     onClick={closeQuickLog}
                     disabled={quickLogLoading}
-                    className="flex-1 bg-slate-100 hover:bg-slate-200 text-slate-700"
+                    className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300"
                   >
                     Cancel
                   </Button>
                   <Button
                     type="submit"
                     disabled={quickLogLoading || !reflection.trim()}
-                    className="flex-1 bg-green-600 hover:bg-green-700 text-white"
+                    className="flex-1 bg-purple-600 hover:bg-purple-700 text-white"
                   >
                     {quickLogLoading ? "Logging..." : "Log Book"}
                   </Button>

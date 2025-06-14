@@ -17,8 +17,8 @@ import os
 from api.rec_engine import get_recommendations
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from core.logic import save_book_entry, load_book_entries, delete_book_entry
-from data.schema import BooksSchema, ValidationError
+from core.logic import save_book_entry, load_book_entries, delete_book_entry, save_to_read_entry, load_to_read_list, delete_to_read_entry
+from data.schema import BooksSchema, ToReadSchema, ValidationError
 from dotenv import load_dotenv
 
 # Load environment variables
@@ -202,10 +202,10 @@ def recommend():
 
         # Load user's reading history
         entries = load_book_entries(user_id)
-        
+        to_read = load_to_read_list(user_id)
         # Generate recommendations based on history
         try:
-            recs_str = get_recommendations(entries)
+            recs_str = get_recommendations(entries, to_read)
             recs = json.loads(recs_str)
             return jsonify({"recommendations": recs})
         except json.JSONDecodeError:
@@ -217,13 +217,155 @@ def recommend():
         return jsonify({"error": err.messages}), 400    
     except Exception as e:
         return jsonify({"error": str(e)}), 500
+
+@app.route("/to-read", methods=["GET"])
+def get_books_to_read():
+    """
+    Retrieve all books on to-read list for a specific user.
     
+    Query Parameters:
+        user_id (str): The ID of the user whose books to retrieve
+        
+    Returns:    
+        JSON array of book objects or error message
+        Status codes:
+            200: Success
+            400: Missing user_id
+            500: Server error
+    """
+    try:
+        user_id = request.args.get("user_id")
+        
+        if not user_id:
+            return jsonify({"message": "Missing userID"}), 400
+        
+        entries = load_to_read_list(user_id)
+        return jsonify(entries), 200
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+    
+@app.route("/to-read/add", methods=["POST"])
+def add_to_read():
+    """
+    Add a new book to the user's to-read list.
+    
+    Expects a JSON payload with the following structure:
+    {
+        "user_id": "string",
+        "book_name": "string",
+        "author_name": "string"
+    }
+    
+    Returns: 
+        JSON response with success message or error details
+        Status codes:
+            200: Success
+            400: Validation error or missing user_id
+            500: Server error
+    """ 
+    try:
+        schema = ToReadSchema()
+        
+        data = request.get_json()
+        user_id = data.get("user_id")
+        
+        if not user_id:
+            return jsonify({"message": "Missing userID"}), 400
+        
+        # Validate incoming data against schema
+        
+        try:
+            validated = schema.load(data)
+            print("✅ Validated data:", validated)  # Debug log
+        except ValidationError as err:
+            print("❌ Validation error:", err.messages)  # Debug log
+            return jsonify({"error": err.messages}), 400
+
+        # Add user_id to data
+        data["user_id"] = user_id
+        
+        # Save validated book entry to storage
+        try:
+            save_to_read_entry(validated, user_id)
+            print("✅ To-read entry saved successfully")  # Debug log
+            return jsonify({"message": "To-read entry saved successfully!"}), 200
+        except Exception as e:
+            print("❌ Save error:", str(e))  # Debug log
+            raise
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500
+
+@app.route("/to-read/delete", methods=["DELETE"])
+def delete_to_read():
+    """
+    Delete a specific book entry from the user's to-read list.
+    
+    Expects a JSON payload with the following structure:
+    {
+        "user_id": "string", 
+        "book_name": "string",
+        "author_name": "string"
+    }
+    
+    Returns:
+        JSON response with success message or error details
+        Status codes:
+            200: Success
+            400: Missing required parameters
+            404: Book not found or not owned by user
+            500: Server error
+    """
+    try:
+        schema = ToReadSchema()
+        
+        data = request.get_json()
+        user_id = data.get("user_id")
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+        
+        if not user_id:
+            return jsonify({"message": "Missing userID"}), 400
+        
+        # Validate incoming data against schema
+        
+        try:
+            validated = schema.load(data)
+            print("✅ Validated data:", validated)  # Debug log
+        except ValidationError as err:
+            print("❌ Validation error:", err.messages)  # Debug log
+            return jsonify({"error": err.messages}), 400
+        
+        # Add user_id to data
+        data["user_id"] = user_id
+        
+        # Attempt to delete the book entry
+        try:
+            success = delete_to_read_entry(validated, user_id)
+            if success:
+                print("✅ To-read entry deleted successfully")  # Debug log
+                return jsonify({"message": "To-read entry deleted successfully"}), 200
+            else:
+                return jsonify({"message": "To-read entry not found or not owned by user"}), 404
+        except Exception as e:
+            print("❌ Delete error:", str(e))  # Debug log
+            raise
+    except Exception as e:
+        return jsonify({"message": str(e)}), 500 # Server error
+    except ValidationError as err:
+        return jsonify({"error": err.messages}), 400
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    
+
+
 # Serve the React application
 @app.route('/')
 @app.route('/dashboard')
 @app.route('/log-book')
 @app.route('/history')
 @app.route('/recommendations')
+@app.route('/future-reads')
 @app.route('/profile')
 @app.route('/signin')
 @app.route('/signup')

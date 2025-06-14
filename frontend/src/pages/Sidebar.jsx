@@ -1,11 +1,12 @@
 "use client"
-import { BookOpen, PlusCircle, History, Lightbulb, User, Menu, X } from "lucide-react"
+import { BookOpen, PlusCircle, History, Lightbulb, User, Menu, X, BookmarkPlus } from "lucide-react"
 import { useState, useEffect } from "react"
 
 const navigation = [
   { title: "Dashboard", id: "dashboard", icon: BookOpen },
   { title: "Log a Book", id: "log-book", icon: PlusCircle },
   { title: "Reading History", id: "history", icon: History },
+  { title: "Future Reads", id: "future-reads", icon: BookmarkPlus },
   { title: "Recommendations", id: "recommendations", icon: Lightbulb },
   { title: "Profile", id: "profile", icon: User },
 ]

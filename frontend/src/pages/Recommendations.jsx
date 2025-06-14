@@ -1,7 +1,7 @@
 "use client"
 import { useEffect, useState } from "react"
 import { useUser } from "./UserContext.jsx"
-import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink, Plus, X } from "lucide-react"
+import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink, Plus, X, BookmarkPlus } from "lucide-react"
 import { trackEvent, trackError } from "../lib/analytics"
 import Card from "./components/Card"
 import Button from "./components/Button"
@@ -18,6 +18,7 @@ export default function Recommendations() {
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState(null)
   const [hasRequested, setHasRequested] = useState(false)
+  const [addingToFutureReads, setAddingToFutureReads] = useState(null)
 
   // Quick-log modal state
   const [showQuickLog, setShowQuickLog] = useState(false)
@@ -146,6 +147,60 @@ export default function Recommendations() {
       setQuickLogLoading(false)
     }
   }
+  const handleAddToFutureReads = async (book) => {
+    if (!user) return
+
+    setAddingToFutureReads(book.title)
+
+    try {
+      const response = await fetch(getApiUrl("to-read/add"), {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          user_id: user.id,
+          book_name: book.title,
+          author_name: book.author,
+        }),
+      })
+
+      if (!response.ok) {
+        const error = new Error('Failed to add book to future reads')
+        error.status = response.status
+        error.statusText = response.statusText
+        throw error
+      }
+
+      const result = await response.json()
+      console.log("✅ Book added to future reads:", result)
+
+      toast.success(`"${book.title}" added to Future Reads! 📖`, {
+        duration: 3000,
+        style: {
+          background: '#059669',
+        },
+      })
+
+      trackEvent('Books', 'Book Added to Future Reads')
+
+    } catch (err) {
+      console.error("❌ Failed to add book to future reads:", err)
+      trackError(err, {
+        userId: user?.id,
+        book_name: book.title,
+        author_name: book.author,
+        status: err.status,
+        statusText: err.statusText
+      }, 'AddToFutureReads')
+
+      if (err.status === 400 && err.message?.includes('already in your to-read list')) {
+        toast.error('Book is already in your Future Reads!')
+      } else {
+        toast.error('Failed to add book to Future Reads. Please try again.')
+      }
+    } finally {
+      setAddingToFutureReads(null)
+    }
+  }
 
   if (loading) return <p className="p-6">Loading recommendations...</p>
 
@@ -226,6 +281,25 @@ export default function Recommendations() {
                           >
                             <Plus className="h-4 w-4 mr-2" />
                             I've read this!
+                          </Button>
+
+                          {/* Add to Future Reads Button */}
+                          <Button
+                            onClick={() => handleAddToFutureReads(book)}
+                            disabled={addingToFutureReads === book.title}
+                            className="w-full bg-green-600 hover:bg-green-700 text-white text-sm"
+                          >
+                            {addingToFutureReads === book.title ? (
+                              <>
+                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                Adding...
+                              </>
+                            ) : (
+                              <>
+                                <BookmarkPlus className="h-4 w-4 mr-2" />
+                                Add to Future Reads
+                              </>
+                            )}
                           </Button>
 
                           {/* Goodreads Link */}

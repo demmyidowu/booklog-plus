@@ -43,3 +43,36 @@ class BooksSchema(Schema):
                              from being processed.
         """
         unknown = EXCLUDE
+
+class ToReadSchema(Schema):
+    """
+    Schema for validating to-read entries.
+    
+    This schema defines the required fields for a to-read entry and their types.
+    It excludes any additional fields not defined in the schema when loading data.
+    
+    Attributes:
+        book_name (str): The title of the book
+        author_name (str): The name of the book's author
+        
+    Example:
+        >>> schema = ToReadSchema()
+        >>> data = {
+        ...     "book_name": "The Hobbit",
+        ...     "author_name": "J.R.R. Tolkien",
+        ... }
+        >>> validated = schema.load(data)
+    """
+    book_name = fields.String(required=True)
+    author_name = fields.String(required=True)
+    
+    class Meta:
+        """
+        Meta configuration for the schema.
+        
+        Attributes:
+            unknown (EXCLUDE): Excludes any fields not defined in the schema
+                             when loading data, preventing unexpected data
+                             from being processed.
+        """
+        unknown = EXCLUDE

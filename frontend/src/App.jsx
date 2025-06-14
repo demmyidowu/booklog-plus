@@ -3,6 +3,7 @@ import Dashboard from "./pages/Dashboard"
 import LogBook from "./pages/LogBook"
 import History from "./pages/History"
 import Recommendations from "./pages/Recommendations"
+import FutureReads from "./pages/FutureReads"
 import Profile from "./pages/Profile"
 import SignInPage from "./pages/SignInPage"
 import SignUpPage from "./pages/SignUpPage"
@@ -83,6 +84,9 @@ function App() {
       case '/recommendations':
         setCurrentPage('recommendations');
         break;
+      case '/future-reads':
+        setCurrentPage('future-reads');
+        break;
       case '/profile':
         setCurrentPage('profile');
         break;
@@ -119,6 +123,8 @@ function App() {
         return <History />
       case "recommendations":
         return <Recommendations />
+      case "future-reads":
+        return <FutureReads />
       case "profile":
         return <Profile />
       case "signup":

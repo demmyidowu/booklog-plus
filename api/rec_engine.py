@@ -16,7 +16,7 @@ import os
 import json
 import re
 from dotenv import load_dotenv
-from data.schema import BooksSchema, ValidationError
+from data.schema import BooksSchema, ToReadSchema, ValidationError
 
 # Load environment variables and initialize OpenAI client
 load_dotenv()
@@ -34,7 +34,7 @@ def validate_goodreads_link(link: str) -> bool:
     goodreads_pattern = r'^https?://(?:www\.)?goodreads\.com/book/show/\d+'
     return bool(re.match(goodreads_pattern, link))
 
-def get_recommendations(past_entries: list, debug: bool = False, retry_count: int = 0) -> str:
+def get_recommendations(past_entries: list, to_read: list, debug: bool = False, retry_count: int = 0) -> str:
     """
     Generate personalized book recommendations based on user's reading history.
     
@@ -73,8 +73,16 @@ def get_recommendations(past_entries: list, debug: bool = False, retry_count: in
         except ValidationError as err:
             print(f"Skipping invalid entry: {err.messages}")
     
+    to_read_data = []
+    for entry in to_read:
+        try:
+            validated = ToReadSchema().load(entry)
+            to_read_data.append(validated)
+        except ValidationError as err:
+            print(f"Skipping invalid entry: {err.messages}")
+    
     # Build and split prompt into instruction and input
-    prompt = build_prompt_from_data(prompt_data)
+    prompt = build_prompt_from_data(prompt_data, to_read_data)
     strings = prompt.split("\n")
     instruction = strings[0]
     inputPrompt = "\n".join(strings[1:])
@@ -100,13 +108,13 @@ def get_recommendations(past_entries: list, debug: bool = False, retry_count: in
     try:
         recs = json.loads(finalOutput)
         if not isinstance(recs, list) or len(recs) != 3:
-            return get_recommendations(past_entries, debug, retry_count + 1)
+            return get_recommendations(past_entries, to_read, debug, retry_count + 1)
         
         # Validate each recommendation
         for rec in recs:
             # Check required fields
             if not all(key in rec for key in ["title", "author", "description"]):
-                return get_recommendations(past_entries, debug, retry_count + 1)
+                return get_recommendations(past_entries, to_read, debug, retry_count + 1)
             
             # Remove invalid Goodreads links
             if "link" in rec and not validate_goodreads_link(rec["link"]):
@@ -114,9 +122,9 @@ def get_recommendations(past_entries: list, debug: bool = False, retry_count: in
         
         return json.dumps(recs)  # Return cleaned recommendations
     except json.JSONDecodeError:
-        return get_recommendations(past_entries, debug, retry_count + 1)
+        return get_recommendations(past_entries, to_read, debug, retry_count + 1)
 
-def build_prompt_from_data(entries: list) -> str:
+def build_prompt_from_data(entries: list, to_read: list) -> str:
     """
     Build a natural language prompt for the OpenAI API based on user's reading history.
     
@@ -138,11 +146,18 @@ def build_prompt_from_data(entries: list) -> str:
             f"The reflection on this book is:\n {book['reflection']}"
         )
     
+    next_reads = []
+    for book in to_read:
+        next_reads.append(
+            f"{book['book_name']} by {book['author_name']}"
+        )
+    
     # Construct librarian-style prompt
     prompt = (
         "You are a lifelong librarian known for giving spot-on book recommendations. "
         "You love helping readers find books that match their taste, tone, and interests.\n"
         f"Here's a list of books or personal reflections on books I've enjoyed:\n {reflections}\n "
+        f"Here's a list of books I'm thinking of reading next:\n {next_reads}\n "
         "Carefully analyze the themes, tone, and emotional impact to understand what I enjoy.\n"
         "Based on that, recommend EXACTLY 3 books I might enjoy next. You MUST format your response as a valid JSON array "
         "containing EXACTLY 3 objects. Each object MUST follow this structure:\n"

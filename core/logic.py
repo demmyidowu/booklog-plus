@@ -58,6 +58,52 @@ def save_book_entry(entry: dict, user_id: str) -> None:
         print(f"❌ Error in save_book_entry: {str(e)}")  # Debug log
         raise
 
+def save_to_read_entry(entry: dict, user_id: str) -> None:
+    """
+    Save a new book entry to the user's to-read list in Supabase.
+    
+    Args:
+        entry (dict): Book entry containing book_name and author_name
+        user_id (str): Unique identifier for the user
+
+    Raises:
+        Exception: If the Supabase insert operation fails
+        
+    Example:
+        >>> entry = {
+        ...     "book_name": "1984",
+        ...     "author_name": "George Orwell"
+        ... }
+        >>> save_to_read_entry(entry, "user123")
+    """
+    try:
+        print("📚 Attempting to save to-read entry:", entry)  # Debug log
+        
+        # Ensure all required fields are present
+        required_fields = ["book_name", "author_name"]
+        missing_fields = [field for field in required_fields if field not in entry]
+        if missing_fields:
+            raise Exception(f"Missing required fields: {', '.join(missing_fields)}")
+        
+        # Add user_id to entry
+        entry["user_id"] = user_id
+        print("👤 Added user_id to entry:", entry)  # Debug log
+        
+        # Attempt to insert into Supabase
+        response = supabase.table("to_read_logs").insert(entry).execute()
+
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        if not response.data:
+            raise Exception("❌ Insert failed: No data returned from Supabase")
+        
+        print("✅ To-read entry saved successfully:", response.data)  # Debug log
+    except Exception as e:
+        print(f"❌ Error in save_to_read_entry: {str(e)}")  # Debug log
+        raise
+
 def load_book_entries(user_id: str) -> list:
     """
     Retrieve all book entries for a specific user from Supabase.
@@ -84,6 +130,34 @@ def load_book_entries(user_id: str) -> list:
             return []
     except Exception as e:
         print(f"❌ Exception in load_book_entries: {str(e)}")
+        return []
+    
+def load_to_read_list(user_id: str) -> list:
+    """
+    Retrieve all books on to-read list for a specific user from Supabase.
+    
+    Args:
+        user_id (str): Unique identifier for the user
+        
+    Returns:
+        list: Array of book entries, each containing book_name, and author_name.
+              Returns empty list if no entries found or on error.
+        
+    Example:
+        >>> entries = load_to_read_list("user123")
+        >>> for entry in entries:
+        ...     print(f"{entry['book_name']} by {entry['author_name']}")
+    """
+    response = supabase.table("to_read_logs").select("*").eq("user_id", user_id).execute()    
+
+    try:
+        if response.data:
+            return response.data
+        else:
+            print(f"❌ No entries found or error: {response}")
+            return []
+    except Exception as e:
+        print(f"❌ Exception in load_to_read_list: {str(e)}")
         return []
 
 def delete_book_entry(book_name: str, author_name: str, user_id: str) -> bool:
@@ -127,6 +201,47 @@ def delete_book_entry(book_name: str, author_name: str, user_id: str) -> bool:
             
     except Exception as e:
         print(f"❌ Error in delete_book_entry_by_details: {str(e)}")  # Debug log
+        raise
+
+def delete_to_read_entry(entry: dict, user_id: str) -> bool:
+    """
+    Delete a specific book entry from the user's to-read list in Supabase by book details.
+    
+    Args:
+        entry (dict): Book entry containing book_name and author_name
+        user_id (str): Unique identifier for the user (for security) 
+
+    Returns:
+        bool: True if deletion was successful, False otherwise
+        
+    Raises:
+        Exception: If the Supabase delete operation fails 
+        
+    Example:
+        >>> success = delete_to_read_entry({"book_name": "1984", "author_name": "George Orwell"}, "user456")
+        >>> if success:
+        ...     print("Book deleted successfully")
+    """
+    try:
+        print(f"🗑️ Attempting to delete to-read entry '{entry['book_name']}' by '{entry['author_name']}' for user {user_id}")  # Debug log
+        
+        # Delete the to-read entry by matching book_name, author_name, and user_id
+        response = supabase.table("to_read_logs").delete().eq("book_name", entry["book_name"]).eq("author_name", entry["author_name"]).eq("user_id", user_id).execute()
+        print("📡 Supabase delete response:", response)  # Debug log
+        
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        # Check if any rows were affected
+        if response.data and len(response.data) > 0:
+            print("✅ To-read entry deleted successfully:", response.data)  # Debug log
+            return True
+        else:
+            print("⚠️ No to-read entry found to delete (may not exist or not owned by user)")
+            return False
+    except Exception as e:
+        print(f"❌ Error in delete_to_read_entry: {str(e)}")  # Debug log
         raise
 
 def get_user_name(user_id: str) -> str | None:

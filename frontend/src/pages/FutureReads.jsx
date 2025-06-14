@@ -263,7 +263,7 @@ export default function FutureReads() {
             <div className="p-6 space-y-6">
                 <div className="text-center max-w-2xl mx-auto">
                     <h1 className="text-3xl font-bold text-slate-800 mb-3">Future Reads</h1>
-                    <p className="text-slate-600">Books you want to read next</p>
+                    <p className="text-slate-600">Your Next Great Reads📗</p>
                 </div>
 
                 <div className="max-w-3xl mx-auto">

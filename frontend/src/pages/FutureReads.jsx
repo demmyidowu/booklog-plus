@@ -40,7 +40,7 @@ export default function FutureReads() {
 
         try {
             // Simple search URL construction (users can search manually)
-            const searchQuery = encodeURIComponent(`${bookName} ${authorName}`)
+            const searchQuery = encodeURIComponent(bookName)
             const goodreadsSearchUrl = `https://www.goodreads.com/search?q=${searchQuery}`
 
             setGoodreadsLinks(prev => ({
@@ -339,6 +339,21 @@ export default function FutureReads() {
                                                     <h4 className="font-medium text-slate-800 text-lg mb-1">{book.book_name}</h4>
                                                     <p className="text-sm text-slate-600 mb-3">by {book.author_name}</p>
 
+                                                    {/* Goodreads Link - moved here, below author but above date */}
+                                                    {goodreadsLink && (
+                                                        <div className="mb-3">
+                                                            <a
+                                                                href={goodreadsLink}
+                                                                target="_blank"
+                                                                rel="noopener noreferrer"
+                                                                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                                                            >
+                                                                Search on Goodreads
+                                                                <ExternalLink className="h-3 w-3 ml-1" />
+                                                            </a>
+                                                        </div>
+                                                    )}
+
                                                     <div className="flex items-center gap-3 mb-3">
                                                         <div className="flex items-center gap-2 text-xs text-slate-500">
                                                             <Calendar className="h-3 w-3" />
@@ -353,19 +368,6 @@ export default function FutureReads() {
                                                         <CheckCircle className="h-4 w-4" />
                                                         Mark as Read
                                                     </Button>
-
-                                                    {/* Goodreads Link */}
-                                                    {goodreadsLink && (
-                                                        <a
-                                                            href={goodreadsLink}
-                                                            target="_blank"
-                                                            rel="noopener noreferrer"
-                                                            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
-                                                        >
-                                                            Search on Goodreads
-                                                            <ExternalLink className="h-3 w-3 ml-1" />
-                                                        </a>
-                                                    )}
                                                 </div>
                                             </div>
                                         </div>

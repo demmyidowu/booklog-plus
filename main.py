@@ -244,6 +244,7 @@ def get_books_to_read():
     except Exception as e:
         return jsonify({"message": str(e)}), 500
     
+# Replace your /to-read/add endpoint with this:
 @app.route("/to-read/add", methods=["POST"])
 def add_to_read():
     """
@@ -273,16 +274,12 @@ def add_to_read():
             return jsonify({"message": "Missing userID"}), 400
         
         # Validate incoming data against schema
-        
         try:
             validated = schema.load(data)
             print("✅ Validated data:", validated)  # Debug log
         except ValidationError as err:
             print("❌ Validation error:", err.messages)  # Debug log
             return jsonify({"error": err.messages}), 400
-
-        # Add user_id to data
-        data["user_id"] = user_id
         
         # Save validated book entry to storage
         try:
@@ -292,9 +289,12 @@ def add_to_read():
         except Exception as e:
             print("❌ Save error:", str(e))  # Debug log
             raise
+            
     except Exception as e:
+        print("❌ Unexpected error:", str(e))  # Debug log
         return jsonify({"message": str(e)}), 500
 
+# Replace your /to-read/delete endpoint with this:
 @app.route("/to-read/delete", methods=["DELETE"])
 def delete_to_read():
     """
@@ -319,25 +319,22 @@ def delete_to_read():
         schema = ToReadSchema()
         
         data = request.get_json()
-        user_id = data.get("user_id")
         
         if not data:
             return jsonify({"message": "Request body required"}), 400
+        
+        user_id = data.get("user_id")
         
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
         # Validate incoming data against schema
-        
         try:
             validated = schema.load(data)
             print("✅ Validated data:", validated)  # Debug log
         except ValidationError as err:
             print("❌ Validation error:", err.messages)  # Debug log
             return jsonify({"error": err.messages}), 400
-        
-        # Add user_id to data
-        data["user_id"] = user_id
         
         # Attempt to delete the book entry
         try:
@@ -350,12 +347,10 @@ def delete_to_read():
         except Exception as e:
             print("❌ Delete error:", str(e))  # Debug log
             raise
+            
     except Exception as e:
-        return jsonify({"message": str(e)}), 500 # Server error
-    except ValidationError as err:
-        return jsonify({"error": err.messages}), 400
-    except Exception as e:
-        return jsonify({"error": str(e)}), 500
+        print("❌ Unexpected error in delete_to_read:", str(e))  # Debug log
+        return jsonify({"message": str(e)}), 500
     
 
 

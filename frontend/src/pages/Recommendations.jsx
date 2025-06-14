@@ -19,6 +19,8 @@ export default function Recommendations() {
   const [error, setError] = useState(null)
   const [hasRequested, setHasRequested] = useState(false)
   const [addingToFutureReads, setAddingToFutureReads] = useState(null)
+  const [processedBooks, setProcessedBooks] = useState(new Set())
+
 
   // Quick-log modal state
   const [showQuickLog, setShowQuickLog] = useState(false)
@@ -123,6 +125,9 @@ export default function Recommendations() {
       const result = await response.json()
       console.log("✅ Recommended book logged:", result)
 
+      // Mark this book as processed
+      setProcessedBooks(prev => new Set([...prev, selectedBook.title]))
+
       toast.success(`"${selectedBook.title}" logged successfully! 📚`, {
         duration: 3000,
         style: {
@@ -172,6 +177,9 @@ export default function Recommendations() {
 
       const result = await response.json()
       console.log("✅ Book added to future reads:", result)
+
+      // Mark this book as processed
+      setProcessedBooks(prev => new Set([...prev, book.title]))
 
       toast.success(`"${book.title}" added to Future Reads! 📖`, {
         duration: 3000,
@@ -261,65 +269,78 @@ export default function Recommendations() {
         ) : (
           <div className="max-w-4xl mx-auto">
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              {recommendations.map((book, index) => (
-                <Card key={index} className="border-slate-200">
-                  <div className="p-6">
-                    <div className="flex flex-col gap-4">
-                      <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
-                        <BookOpen className="h-5 w-5 text-white" />
-                      </div>
-                      <div className="flex-1">
-                        <h4 className="font-medium text-slate-800 text-lg mb-1">{book.title}</h4>
-                        <p className="text-sm text-slate-600 mb-2">by {book.author}</p>
-                        <p className="text-slate-700 text-sm leading-relaxed mb-4">{book.description}</p>
+              {recommendations.map((book, index) => {
+                const isProcessed = processedBooks.has(book.title)
+                const isAddingThis = addingToFutureReads === book.title
 
-                        <div className="space-y-3">
-                          {/* Quick Log Button */}
-                          <Button
-                            onClick={() => openQuickLog(book)}
-                            className="w-full bg-purple-600 hover:bg-purple-700 text-white text-sm"
-                          >
-                            <Plus className="h-4 w-4 mr-2" />
-                            I've read this!
-                          </Button>
+                return (
+                  <Card key={index} className="border-slate-200">
+                    <div className="p-6">
+                      <div className="flex flex-col gap-4">
+                        <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-800 text-lg mb-1">{book.title}</h4>
+                          <p className="text-sm text-slate-600 mb-2">by {book.author}</p>
+                          <p className="text-slate-700 text-sm leading-relaxed mb-4">{book.description}</p>
 
-                          {/* Add to Future Reads Button */}
-                          <Button
-                            onClick={() => handleAddToFutureReads(book)}
-                            disabled={addingToFutureReads === book.title}
-                            className="w-full bg-green-600 hover:bg-green-700 text-white text-sm"
-                          >
-                            {addingToFutureReads === book.title ? (
-                              <>
-                                <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                                Adding...
-                              </>
-                            ) : (
-                              <>
-                                <BookmarkPlus className="h-4 w-4 mr-2" />
-                                Add to Future Reads
-                              </>
-                            )}
-                          </Button>
-
-                          {/* Goodreads Link */}
-                          {book.link && (
-                            <a
-                              href={book.link}
-                              target="_blank"
-                              rel="noopener noreferrer"
-                              className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                          <div className="space-y-3">
+                            {/* Quick Log Button */}
+                            <Button
+                              onClick={() => openQuickLog(book)}
+                              disabled={isProcessed || isAddingThis}
+                              className={`w-full text-sm ${isProcessed
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700'
+                                } text-white`}
                             >
-                              View on Goodreads
-                              <ExternalLink className="h-3 w-3 ml-1" />
-                            </a>
-                          )}
+                              <Plus className="h-4 w-4 mr-2" />
+                              {isProcessed ? "Already processed" : "I've read this!"}
+                            </Button>
+
+                            {/* Add to Future Reads Button */}
+                            <Button
+                              onClick={() => handleAddToFutureReads(book)}
+                              disabled={isProcessed || isAddingThis}
+                              className={`w-full text-sm ${isProcessed
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'
+                                } text-white`}
+                            >
+                              {isAddingThis ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  Adding...
+                                </>
+                              ) : (
+                                <>
+                                  <BookmarkPlus className="h-4 w-4 mr-2" />
+                                  {isProcessed ? "Already processed" : "Add to Future Reads"}
+                                </>
+                              )}
+                            </Button>
+
+
+                            {/* Goodreads Link */}
+                            {book.link && (
+                              <a
+                                href={book.link}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                              >
+                                View on Goodreads
+                                <ExternalLink className="h-3 w-3 ml-1" />
+                              </a>
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              ))}
+                  </Card>
+                )
+              })}
             </div>
             <div className="text-center mt-8">
               <Button

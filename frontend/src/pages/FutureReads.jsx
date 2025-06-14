@@ -1,7 +1,7 @@
 "use client"
 
 import { useEffect, useState } from "react"
-import { BookOpen, Search, Calendar, Trash2, Plus, CheckCircle, X } from "lucide-react"
+import { BookOpen, Search, Calendar, Trash2, Plus, CheckCircle, X, ExternalLink } from "lucide-react"
 import Card from "./components/Card"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
@@ -20,12 +20,43 @@ export default function FutureReads() {
     const [showAddModal, setShowAddModal] = useState(false)
     const [newBook, setNewBook] = useState({ book_name: "", author_name: "" })
     const [addingBook, setAddingBook] = useState(false)
+    const [goodreadsLinks, setGoodreadsLinks] = useState({})
+    const [searchingGoodreads, setSearchingGoodreads] = useState(new Set())
 
     // Quick-log modal state
     const [showQuickLog, setShowQuickLog] = useState(false)
     const [selectedBook, setSelectedBook] = useState(null)
     const [reflection, setReflection] = useState("")
     const [quickLogLoading, setQuickLogLoading] = useState(false)
+
+    // Function to search for Goodreads links
+    const searchGoodreadsLink = async (bookName, authorName) => {
+        const searchKey = `${bookName}-${authorName}`
+        if (goodreadsLinks[searchKey] || searchingGoodreads.has(searchKey)) {
+            return // Already searched or searching
+        }
+
+        setSearchingGoodreads(prev => new Set([...prev, searchKey]))
+
+        try {
+            // Simple search URL construction (users can search manually)
+            const searchQuery = encodeURIComponent(`${bookName} ${authorName}`)
+            const goodreadsSearchUrl = `https://www.goodreads.com/search?q=${searchQuery}`
+
+            setGoodreadsLinks(prev => ({
+                ...prev,
+                [searchKey]: goodreadsSearchUrl
+            }))
+        } catch (err) {
+            console.error("Failed to generate Goodreads link:", err)
+        } finally {
+            setSearchingGoodreads(prev => {
+                const newSet = new Set(prev)
+                newSet.delete(searchKey)
+                return newSet
+            })
+        }
+    }
 
     useEffect(() => {
         async function fetchToReadBooks() {
@@ -37,6 +68,12 @@ export default function FutureReads() {
                 }
                 const data = await response.json()
                 setBooks(data)
+
+                // Generate Goodreads links for all books
+                data.forEach(book => {
+                    searchGoodreadsLink(book.book_name, book.author_name)
+                })
+
             } catch (err) {
                 console.error("❌ Failed to fetch to-read books:", err)
                 trackError(err, { userId: user?.id }, 'FutureReads')
@@ -119,6 +156,9 @@ export default function FutureReads() {
                 created_at: new Date().toISOString()
             }
             setBooks([newBookEntry, ...books])
+
+            // Generate Goodreads link for the new book
+            searchGoodreadsLink(newBookEntry.book_name, newBookEntry.author_name)
 
             toast.success('Book added to future reads! 📚')
             trackEvent('FutureReads', 'Book Added')
@@ -269,51 +309,69 @@ export default function FutureReads() {
                                 )}
                             </Card>
                         ) : (
-                            filteredBooks.map((book, index) => (
-                                <Card key={`${book.book_name}-${book.author_name}-${index}`} className="border-slate-200 relative">
-                                    <div className="p-6">
-                                        <div className="flex gap-4">
-                                            {/* Delete button */}
-                                            <button
-                                                onClick={() => handleDelete(book)}
-                                                disabled={deleting === `${book.book_name}-${book.author_name}`}
-                                                className="absolute top-4 right-4 p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white z-10"
-                                                title="Remove from future reads"
-                                            >
-                                                {deleting === `${book.book_name}-${book.author_name}` ? (
-                                                    <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                                ) : (
-                                                    <Trash2 className="h-4 w-4" />
-                                                )}
-                                            </button>
+                            filteredBooks.map((book, index) => {
+                                const searchKey = `${book.book_name}-${book.author_name}`
+                                const goodreadsLink = goodreadsLinks[searchKey]
 
-                                            <div className="w-12 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
-                                                <BookOpen className="h-5 w-5 text-white" />
-                                            </div>
+                                return (
+                                    <Card key={`${book.book_name}-${book.author_name}-${index}`} className="border-slate-200 relative">
+                                        <div className="p-6">
+                                            <div className="flex gap-4">
+                                                {/* Delete button */}
+                                                <button
+                                                    onClick={() => handleDelete(book)}
+                                                    disabled={deleting === `${book.book_name}-${book.author_name}`}
+                                                    className="absolute top-4 right-4 p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white z-10"
+                                                    title="Remove from future reads"
+                                                >
+                                                    {deleting === `${book.book_name}-${book.author_name}` ? (
+                                                        <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                                    ) : (
+                                                        <Trash2 className="h-4 w-4" />
+                                                    )}
+                                                </button>
 
-                                            <div className="flex-1 min-w-0">
-                                                <h4 className="font-medium text-slate-800 text-lg mb-1">{book.book_name}</h4>
-                                                <p className="text-sm text-slate-600 mb-3">by {book.author_name}</p>
-
-                                                <div className="flex items-center gap-3 mb-3">
-                                                    <div className="flex items-center gap-2 text-xs text-slate-500">
-                                                        <Calendar className="h-3 w-3" />
-                                                        <span>Added {new Date(book.created_at).toLocaleDateString()}</span>
-                                                    </div>
+                                                <div className="w-12 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
+                                                    <BookOpen className="h-5 w-5 text-white" />
                                                 </div>
 
-                                                <Button
-                                                    onClick={() => openQuickLog(book)}
-                                                    className="bg-green-600 hover:bg-green-700 text-white text-sm flex items-center gap-2"
-                                                >
-                                                    <CheckCircle className="h-4 w-4" />
-                                                    Mark as Read
-                                                </Button>
+                                                <div className="flex-1 min-w-0">
+                                                    <h4 className="font-medium text-slate-800 text-lg mb-1">{book.book_name}</h4>
+                                                    <p className="text-sm text-slate-600 mb-3">by {book.author_name}</p>
+
+                                                    <div className="flex items-center gap-3 mb-3">
+                                                        <div className="flex items-center gap-2 text-xs text-slate-500">
+                                                            <Calendar className="h-3 w-3" />
+                                                            <span>Added {new Date(book.created_at).toLocaleDateString()}</span>
+                                                        </div>
+                                                    </div>
+
+                                                    <Button
+                                                        onClick={() => openQuickLog(book)}
+                                                        className="bg-green-600 hover:bg-green-700 text-white text-sm flex items-center gap-2"
+                                                    >
+                                                        <CheckCircle className="h-4 w-4" />
+                                                        Mark as Read
+                                                    </Button>
+
+                                                    {/* Goodreads Link */}
+                                                    {goodreadsLink && (
+                                                        <a
+                                                            href={goodreadsLink}
+                                                            target="_blank"
+                                                            rel="noopener noreferrer"
+                                                            className="inline-flex items-center text-sm text-blue-600 hover:text-blue-700 transition-colors"
+                                                        >
+                                                            Search on Goodreads
+                                                            <ExternalLink className="h-3 w-3 ml-1" />
+                                                        </a>
+                                                    )}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
-                                </Card>
-                            ))
+                                    </Card>
+                                )
+                            })
                         )}
                     </div>
                 </div>

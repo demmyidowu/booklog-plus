@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { BookOpen, ArrowRight, Sparkles, TrendingUp, X } from "lucide-react"
+import { BookOpen, ArrowRight, Sparkles, TrendingUp, X, BookmarkPlus } from "lucide-react"
 import Button from "./Button"
 import Card from "./Card"
 
@@ -26,7 +26,14 @@ export default function WelcomeModal({ isOpen, onClose, onGetStarted, userName }
             title: "Get Smart Recommendations",
             description: "After logging books, you'll get personalized recommendations.",
             detail: "The more books you log, the better our recommendations become. Ready to discover your next favorite read?",
-            buttonText: "Get started!"
+            buttonText: "Next!"
+        },
+        {
+            icon: BookmarkPlus,
+            title: "Add Books to Your Wishlist",
+            description: "Add books to your wishlist to keep track of what you want to read next!",
+            detail: "This helps you keep track of what books caught your eye that you want to read next.",
+            buttonText: "Get Started!"
         }
     ]
 

@@ -1,59 +1,87 @@
 "use client"
+
+// React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
+// User authentication context
 import { useUser } from "./UserContext.jsx"
+// Lucide React icons for UI elements
 import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink, Plus, X, BookmarkPlus } from "lucide-react"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
+// Custom UI components
 import Card from "./components/Card"
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
+// API configuration for backend communication
 import { getApiUrl } from "../config"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 
 
 export default function Recommendations() {
+  // Get current authenticated user from context
   const user = useUser()
-  const [recommendations, setRecommendations] = useState([])
-  const [loading, setLoading] = useState(false)
-  const [isLoading, setIsLoading] = useState(false)
-  const [error, setError] = useState(null)
-  const [hasRequested, setHasRequested] = useState(false)
-  const [addingToFutureReads, setAddingToFutureReads] = useState(null)
-  const [processedBooks, setProcessedBooks] = useState(new Set())
+  
+  // Recommendations data and states
+  const [recommendations, setRecommendations] = useState([])     // AI-generated book recommendations
+  const [loading, setLoading] = useState(false)                 // Legacy loading state (kept for compatibility)
+  const [isLoading, setIsLoading] = useState(false)             // Active loading state for API calls
+  const [error, setError] = useState(null)                      // Error state for failed API calls
+  const [hasRequested, setHasRequested] = useState(false)       // Track if user has requested recommendations
+  
+  // Future reads integration states
+  const [addingToFutureReads, setAddingToFutureReads] = useState(null)  // Track which book is being added
+  const [processedBooks, setProcessedBooks] = useState(new Set())        // Track books already processed
+
+  // Quick-log modal state (for immediately logging a recommended book as read)
+  const [showQuickLog, setShowQuickLog] = useState(false)       // Show/hide quick log modal
+  const [selectedBook, setSelectedBook] = useState(null)        // Book selected for quick logging
+  const [reflection, setReflection] = useState("")              // User's reflection for quick log
+  const [quickLogLoading, setQuickLogLoading] = useState(false) // Quick log submission loading state
 
 
-  // Quick-log modal state
-  const [showQuickLog, setShowQuickLog] = useState(false)
-  const [selectedBook, setSelectedBook] = useState(null)
-  const [reflection, setReflection] = useState("")
-  const [quickLogLoading, setQuickLogLoading] = useState(false)
-
-
+  // Fetch AI-powered book recommendations from backend
   const fetchRecommendations = async () => {
+    // Ensure user is authenticated before making API call
     if (!user) return
+    
+    // Set loading states and clear previous errors
     setIsLoading(true)
     setError(null)
-    setHasRequested(true)
+    setHasRequested(true)  // Track that user has attempted to get recommendations
+    
     try {
+      // Call backend recommendation API with user ID
       const res = await fetch(getApiUrl(`recommend?user_id=${user.id}`))
+      
+      // Check for HTTP errors
       if (!res.ok) {
         const error = new Error('Failed to fetch recommendations')
-        error.status = res.status
+        error.status = res.status  // Attach status code for error tracking
         throw error
       }
+      
+      // Parse JSON response from AI recommendation engine
       const data = await res.json()
 
-      // Validate we got exactly 3 recommendations
+      // Validate that we received the expected format (exactly 3 recommendations)
+      // This ensures the AI API returned valid data
       if (!data.recommendations || !Array.isArray(data.recommendations) || data.recommendations.length !== 3) {
         const error = new Error('Invalid recommendations format')
-        error.data = data
+        error.data = data  // Attach response data for debugging
         throw error
       }
 
+      // Update state with validated recommendations
       setRecommendations(data.recommendations)
+      
+      // Track successful recommendation fetch for analytics
       trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {
       console.error("Error fetching recommendations:", err)
+      
+      // Track error for analytics and debugging
       trackError(err, {
         userId: user?.id,
         hasRequested,

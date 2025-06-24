@@ -1,51 +1,69 @@
 "use client"
 
+// React hook for component state management
 import { useState } from "react"
+// User authentication context
 import { useUser } from "./UserContext"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from '../lib/analytics'
+// Custom UI components for forms and layout
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
 import Card from "./components/Card"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
+// API configuration for backend communication
 import { getApiUrl } from "../config"
 
 export default function LogBook({ onNavigate, isFirstTime }) {
+  // TODO: Uncomment when analytics tracking is fully implemented
   //trackEvent('LogBook', 'A Book Was Logged')
+  
+  // Get current authenticated user from context
   const user = useUser()
+  
+  // Form state management for book entry
   const [formData, setFormData] = useState({
-    book_name: "",
-    author_name: "",
-    reflection: "",
+    book_name: "",    // Title of the book
+    author_name: "",  // Author's name
+    reflection: "",   // User's personal thoughts/reflection
   })
 
+  // Loading state for form submission
   const [loading, setLoading] = useState(false)
 
+  // Handle form input changes
+  // Updates the form state when user types in any input field
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value,  // Update specific field based on input name
     }))
   }
 
+  // Handle form submission to add a new book entry
   const handleSubmit = async (e) => {
-    e.preventDefault()
+    e.preventDefault()  // Prevent default form submission behavior
+    
+    // Ensure user is authenticated before allowing book submission
     if (!user) {
       alert("Please sign in to log a book")
       return
     }
 
-    setLoading(true)
+    setLoading(true)  // Show loading state during API call
 
     try {
+      // Send POST request to backend API to save book entry
       const response = await fetch(getApiUrl("add"), {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          user_id: user.id,
-          book_name: formData.book_name,
-          author_name: formData.author_name,
-          reflection: formData.reflection,
+          user_id: user.id,                    // Associate book with current user
+          book_name: formData.book_name,       // Book title from form
+          author_name: formData.author_name,   // Author name from form
+          reflection: formData.reflection,     // User's reflection from form
         }),
       })
 

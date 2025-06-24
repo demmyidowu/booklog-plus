@@ -21,24 +21,27 @@ from core.logic import save_book_entry, load_book_entries, delete_book_entry, sa
 from data.schema import BooksSchema, ToReadSchema, ValidationError
 from dotenv import load_dotenv
 
-# Load environment variables
+# Load environment variables from .env file for configuration
 load_dotenv()
 
-# Initialize Flask application with CORS support
+# Initialize Flask application with static folder pointing to React build directory
 app = Flask(__name__, static_folder='frontend/dist')
 
-# Configure CORS - in production, allow same origin
+# Configure Cross-Origin Resource Sharing (CORS) for frontend-backend communication
+# Different configurations for development vs production environments
 if os.environ.get('RAILWAY_ENVIRONMENT') == 'production':
-    # In production (Railway), allow requests from same origin
+    # In production (Railway deployment), allow requests from same origin only
+    # This is more secure as it restricts cross-origin requests
     CORS(app, supports_credentials=True)
 else:
-    # In development, use allowed origins from env
+    # In development, allow specific localhost origins for frontend development servers
+    # Parse comma-separated list of allowed origins from environment variable
     allowed_origins = os.getenv('ALLOWED_ORIGINS', 'http://localhost:3000,http://127.0.0.1:3000,http://localhost:5001,http://127.0.0.1:5001').split(',')
     CORS(app, resources={
-        r"/*": {
-            "origins": allowed_origins,
-            "methods": ["GET", "POST", "DELETE", "OPTIONS"],
-            "allow_headers": ["Content-Type", "Authorization"]
+        r"/*": {  # Apply CORS to all routes
+            "origins": allowed_origins,  # Only allow specific frontend URLs
+            "methods": ["GET", "POST", "DELETE", "OPTIONS"],  # Allowed HTTP methods
+            "allow_headers": ["Content-Type", "Authorization"]  # Required headers for auth
         }
     })
 
@@ -64,30 +67,34 @@ def add_book():
             500: Server error
     """
     try:
+        # Initialize validation schema for book entries
         schema = BooksSchema()
         
+        # Extract JSON payload from HTTP request
         data = request.get_json()
         user_id = data.get("user_id")
         
+        # Ensure user_id is provided for security and data isolation
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
-        # Validate incoming data against schema
+        # Validate incoming data against predefined schema
+        # This ensures data integrity and prevents malformed entries
         try:
-            validated = schema.load(data)
-            print("✅ Validated data:", validated)  # Debug log
+            validated = schema.load(data)  # Marshmallow validation
+            print("✅ Validated data:", validated)  # Debug log for development
         except ValidationError as err:
             print("❌ Validation error:", err.messages)  # Debug log
             return jsonify({"error": err.messages}), 400
         
-        # Save validated book entry to storage
+        # Persist validated book entry to Supabase database
         try:
-            save_book_entry(validated, user_id)
+            save_book_entry(validated, user_id)  # Call core business logic
             print("✅ Book saved successfully")  # Debug log
             return jsonify({"message": "Book saved successfully!"}), 200
         except Exception as e:
             print("❌ Save error:", str(e))  # Debug log
-            raise
+            raise  # Re-raise to be caught by outer exception handler
     except ValidationError as err:
         return jsonify({"error": err.messages}), 400
     except Exception as e:
@@ -110,13 +117,16 @@ def get_books():
             500: Server error
     """
     try:
+        # Extract user_id from query parameters (e.g., /books?user_id=123)
         user_id = request.args.get("user_id")
         
+        # Validate that user_id is provided for security
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
-        entries = load_book_entries(user_id)
-        return jsonify(entries), 200
+        # Retrieve all book entries for the specified user from database
+        entries = load_book_entries(user_id)  # Returns list of book objects
+        return jsonify(entries), 200  # Return as JSON array
     except Exception as e:
         return jsonify({"message": str(e)}), 500
     
@@ -141,15 +151,20 @@ def delete_book():
             500: Server error
     """
     try:
+        # Extract JSON payload from DELETE request
         data = request.get_json()
         
+        # Ensure request body is provided
         if not data:
             return jsonify({"message": "Request body required"}), 400
             
+        # Extract required parameters for book identification
         user_id = data.get("user_id")
         book_name = data.get("book_name")
         author_name = data.get("author_name")
         
+        # Validate all required parameters are present
+        # This prevents SQL injection and ensures data integrity
         if not user_id:
             return jsonify({"message": "Missing user_id parameter"}), 400
             
@@ -159,17 +174,19 @@ def delete_book():
         if not author_name:
             return jsonify({"message": "Missing author_name parameter"}), 400
         
-        # Attempt to delete the book entry
+        # Attempt to delete the specific book entry from user's library
         try:
+            # Call core logic function that handles database deletion
             success = delete_book_entry(book_name, author_name, user_id)
             if success:
                 print("✅ Book deleted successfully")  # Debug log
                 return jsonify({"message": "Book deleted successfully"}), 200
             else:
+                # Book not found or user doesn't own it (security measure)
                 return jsonify({"message": "Book not found or not owned by user"}), 404
         except Exception as e:
             print("❌ Delete error:", str(e))  # Debug log
-            raise
+            raise  # Re-raise for outer exception handler
             
     except Exception as e:
         print("❌ Unexpected error in delete_book:", str(e))  # Debug log
@@ -195,22 +212,28 @@ def recommend():
             500: Server error or invalid AI response
     """
     try:
+        # Extract user_id from query parameters
         user_id = request.args.get("user_id")
         
+        # Validate user_id is provided
         if not user_id:
             return jsonify({"error": "Missing user_id parameter"}), 400
 
-        # Load user's reading history
-        entries = load_book_entries(user_id)
-        to_read = load_to_read_list(user_id)
-        # Generate recommendations based on history
+        # Load user's complete reading data for AI analysis
+        entries = load_book_entries(user_id)  # Previously read books with reflections
+        to_read = load_to_read_list(user_id)  # Books user plans to read
+        
+        # Generate AI-powered recommendations using OpenAI API
         try:
-            recs_str = get_recommendations(entries, to_read)
-            recs = json.loads(recs_str)
-            return jsonify({"recommendations": recs})
+            # Call recommendation engine with user's reading history
+            recs_str = get_recommendations(entries, to_read)  # Returns JSON string
+            recs = json.loads(recs_str)  # Parse JSON response from AI
+            return jsonify({"recommendations": recs})  # Return structured recommendations
         except json.JSONDecodeError:
+            # Handle malformed JSON response from AI
             return jsonify({"error": "Invalid recommendations format from AI"}), 500
         except ValueError as e:
+            # Handle AI service errors (rate limits, API failures, etc.)
             return jsonify({"error": str(e)}), 500
             
     except ValidationError as err:
@@ -234,17 +257,20 @@ def get_books_to_read():
             500: Server error
     """
     try:
+        # Extract user_id from query parameters
         user_id = request.args.get("user_id")
         
+        # Ensure user_id is provided for data security
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
-        entries = load_to_read_list(user_id)
-        return jsonify(entries), 200
+        # Retrieve user's to-read list from database
+        entries = load_to_read_list(user_id)  # Returns list of future reading plans
+        return jsonify(entries), 200  # Return as JSON array
     except Exception as e:
         return jsonify({"message": str(e)}), 500
     
-# Replace your /to-read/add endpoint with this:
+
 @app.route("/to-read/add", methods=["POST"])
 def add_to_read():
     """
@@ -265,36 +291,40 @@ def add_to_read():
             500: Server error
     """ 
     try:
+        # Initialize validation schema for to-read entries (simpler than book entries)
         schema = ToReadSchema()
         
+        # Extract JSON payload from POST request
         data = request.get_json()
         user_id = data.get("user_id")
         
+        # Validate user_id for security and data isolation
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
-        # Validate incoming data against schema
+        # Validate incoming data against to-read schema
+        # ToReadSchema only requires book_name and author_name (no reflection)
         try:
-            validated = schema.load(data)
+            validated = schema.load(data)  # Marshmallow validation
             print("✅ Validated data:", validated)  # Debug log
         except ValidationError as err:
             print("❌ Validation error:", err.messages)  # Debug log
             return jsonify({"error": err.messages}), 400
         
-        # Save validated book entry to storage
+        # Save validated to-read entry to database
         try:
-            save_to_read_entry(validated, user_id)
+            save_to_read_entry(validated, user_id)  # Call core business logic
             print("✅ To-read entry saved successfully")  # Debug log
             return jsonify({"message": "To-read entry saved successfully!"}), 200
         except Exception as e:
             print("❌ Save error:", str(e))  # Debug log
-            raise
+            raise  # Re-raise for outer exception handler
             
     except Exception as e:
         print("❌ Unexpected error:", str(e))  # Debug log
         return jsonify({"message": str(e)}), 500
 
-# Replace your /to-read/delete endpoint with this:
+
 @app.route("/to-read/delete", methods=["DELETE"])
 def delete_to_read():
     """
@@ -316,37 +346,44 @@ def delete_to_read():
             500: Server error
     """
     try:
+        # Initialize schema for validation (ensures data integrity)
         schema = ToReadSchema()
         
+        # Extract JSON payload from DELETE request
         data = request.get_json()
         
+        # Ensure request body is provided
         if not data:
             return jsonify({"message": "Request body required"}), 400
         
+        # Extract user_id for security validation
         user_id = data.get("user_id")
         
         if not user_id:
             return jsonify({"message": "Missing userID"}), 400
         
-        # Validate incoming data against schema
+        # Validate incoming data against to-read schema
+        # This ensures book_name and author_name are present and valid
         try:
-            validated = schema.load(data)
+            validated = schema.load(data)  # Marshmallow validation
             print("✅ Validated data:", validated)  # Debug log
         except ValidationError as err:
             print("❌ Validation error:", err.messages)  # Debug log
             return jsonify({"error": err.messages}), 400
         
-        # Attempt to delete the book entry
+        # Attempt to delete the specific to-read entry
         try:
+            # Call core logic function that handles database deletion
             success = delete_to_read_entry(validated, user_id)
             if success:
                 print("✅ To-read entry deleted successfully")  # Debug log
                 return jsonify({"message": "To-read entry deleted successfully"}), 200
             else:
+                # Entry not found or user doesn't own it (security measure)
                 return jsonify({"message": "To-read entry not found or not owned by user"}), 404
         except Exception as e:
             print("❌ Delete error:", str(e))  # Debug log
-            raise
+            raise  # Re-raise for outer exception handler
             
     except Exception as e:
         print("❌ Unexpected error in delete_to_read:", str(e))  # Debug log
@@ -354,28 +391,44 @@ def delete_to_read():
     
 
 
-# Serve the React application
-@app.route('/')
-@app.route('/dashboard')
-@app.route('/log-book')
-@app.route('/history')
-@app.route('/recommendations')
-@app.route('/future-reads')
-@app.route('/profile')
-@app.route('/signin')
-@app.route('/signup')
+# Static file serving for React Single Page Application (SPA)
+# These routes handle client-side routing by serving the main index.html
+@app.route('/')  # Landing page
+@app.route('/dashboard')  # Main dashboard
+@app.route('/log-book')  # Add new books
+@app.route('/history')  # View reading history
+@app.route('/recommendations')  # AI recommendations
+@app.route('/future-reads')  # To-read list management
+@app.route('/profile')  # User profile
+@app.route('/signin')  # Authentication
+@app.route('/signup')  # User registration
 def serve():
-    """Serve the React application"""
+    """Serve the React application for client-side routing
+    
+    Returns the main index.html file which contains the React app.
+    React Router will handle the actual page routing on the client side.
+    """
     return send_from_directory(app.static_folder, 'index.html')
 
-# Serve static files
+# Catch-all route for static assets (CSS, JS, images, etc.)
 @app.route("/<path:path>")
 def static_proxy(path):
-    """Serve static files from the React app build directory"""
+    """Serve static files from the React app build directory
+    
+    This handles all static assets like JavaScript bundles, CSS files,
+    images, and other assets that the React app needs to function.
+    
+    Args:
+        path: The file path relative to the static folder
+    """
     return send_from_directory(app.static_folder, path)
 
+# Application entry point
 if __name__ == "__main__":
+    # Get port from environment variable (Railway/Heroku compatibility) or default to 5000
     port = int(os.environ.get('PORT', 5000))
+    # Start Flask development server
+    # host='0.0.0.0' allows external connections (required for deployment)
     app.run(host='0.0.0.0', port=port)
     
     

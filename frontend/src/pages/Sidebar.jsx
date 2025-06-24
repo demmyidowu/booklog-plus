@@ -1,42 +1,55 @@
 "use client"
+
+// Lucide React icons for navigation and mobile menu
 import { BookOpen, PlusCircle, History, Lightbulb, User, Menu, X, BookmarkPlus } from "lucide-react"
+// React hooks for state management and side effects
 import { useState, useEffect } from "react"
 
+// Complete navigation configuration for all app pages
+// Each item defines a page with its display title, route ID, and corresponding icon
 const navigation = [
-  { title: "Dashboard", id: "dashboard", icon: BookOpen },
-  { title: "Log a Book", id: "log-book", icon: PlusCircle },
-  { title: "Reading History", id: "history", icon: History },
-  { title: "Future Reads", id: "future-reads", icon: BookmarkPlus },
-  { title: "Recommendations", id: "recommendations", icon: Lightbulb },
-  { title: "Profile", id: "profile", icon: User },
+  { title: "Dashboard", id: "dashboard", icon: BookOpen },           // Main dashboard with stats
+  { title: "Log a Book", id: "log-book", icon: PlusCircle },        // Add new book entries
+  { title: "Reading History", id: "history", icon: History },       // View past reading history
+  { title: "Future Reads", id: "future-reads", icon: BookmarkPlus }, // Manage to-read list
+  { title: "Recommendations", id: "recommendations", icon: Lightbulb }, // AI book recommendations
+  { title: "Profile", id: "profile", icon: User },                 // User profile and settings
 ]
 
 export default function Sidebar({ currentPage, onNavigate }) {
+  // Mobile menu state management
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
 
-  // Close mobile menu when page changes
+  // Close mobile menu automatically when user navigates to a different page
+  // This provides better UX by hiding the menu after navigation
   useEffect(() => {
     setIsMobileMenuOpen(false)
-  }, [currentPage])
+  }, [currentPage])  // Dependency on currentPage ensures this runs on page changes
 
-  // Close mobile menu when clicking outside
+  // Close mobile menu when user clicks outside of it
+  // This provides intuitive UX behavior expected on mobile interfaces
   useEffect(() => {
     const handleClickOutside = (event) => {
+      // Check if menu is open and click is outside both sidebar and menu button
       if (isMobileMenuOpen && !event.target.closest('.mobile-sidebar') && !event.target.closest('.mobile-menu-button')) {
-        setIsMobileMenuOpen(false)
+        setIsMobileMenuOpen(false)  // Close menu if clicking outside
       }
     }
 
+    // Add event listener for clicks anywhere on the document
     document.addEventListener('mousedown', handleClickOutside)
+    
+    // Cleanup: remove event listener when component unmounts or effect re-runs
     return () => document.removeEventListener('mousedown', handleClickOutside)
-  }, [isMobileMenuOpen])
+  }, [isMobileMenuOpen])  // Re-run effect when menu state changes
 
-  // Prevent scroll when mobile menu is open
+  // Prevent background scrolling when mobile menu is open
+  // This prevents the main content from scrolling behind the overlay menu
   useEffect(() => {
     if (isMobileMenuOpen) {
-      document.body.style.overflow = 'hidden'
+      document.body.style.overflow = 'hidden'  // Disable scrolling
     } else {
-      document.body.style.overflow = 'unset'
+      document.body.style.overflow = 'unset'   // Re-enable scrolling
     }
 
     // Cleanup on unmount

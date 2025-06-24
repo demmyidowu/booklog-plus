@@ -11,15 +11,16 @@ a knowledgeable librarian, ensuring suggestions are both relevant and
 engagingly presented.
 """
 
-from openai import OpenAI
-import os
-import json
-import re
-from dotenv import load_dotenv
-from data.schema import BooksSchema, ToReadSchema, ValidationError
+from openai import OpenAI  # OpenAI API client for GPT-3.5 recommendations
+import os  # Environment variable access
+import json  # JSON parsing for AI responses
+import re  # Regular expressions for URL validation
+from dotenv import load_dotenv  # Environment variable loading
+from data.schema import BooksSchema, ToReadSchema, ValidationError  # Data validation schemas
 
-# Load environment variables and initialize OpenAI client
+# Load environment variables from .env file and initialize OpenAI client
 load_dotenv()
+# Initialize OpenAI client with API key from environment variables
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
 def validate_goodreads_link(link: str) -> bool:
@@ -27,11 +28,14 @@ def validate_goodreads_link(link: str) -> bool:
     Validate if a link is a proper Goodreads book URL.
     Returns True if the link is valid, False otherwise.
     """
+    # Return False immediately if link is None or empty
     if not link:
         return False
     
-    # Check if it's a Goodreads URL
+    # Define regex pattern for valid Goodreads book URLs
+    # Must match: https://www.goodreads.com/book/show/{book_id}
     goodreads_pattern = r'^https?://(?:www\.)?goodreads\.com/book/show/\d+'
+    # Use regex to check if the link matches the expected Goodreads format
     return bool(re.match(goodreads_pattern, link))
 
 def get_recommendations(past_entries: list, to_read: list, debug: bool = False, retry_count: int = 0) -> str:
@@ -61,67 +65,83 @@ def get_recommendations(past_entries: list, to_read: list, debug: bool = False, 
         >>> recommendations = get_recommendations(entries)
 
     """
-    if retry_count >= 3:  # Limit retries to prevent infinite loops
+    # Prevent infinite retry loops by limiting attempts
+    if retry_count >= 3:
         raise ValueError("Failed to get valid recommendations after multiple attempts")
 
-    # Validate and prepare prompt data
+    # Validate and prepare reading history data for AI prompt
     prompt_data = []
     for entry in past_entries:
         try:
+            # Validate each book entry against BooksSchema (book_name, author_name, reflection)
             validated = BooksSchema().load(entry)
             prompt_data.append(validated)
         except ValidationError as err:
+            # Skip invalid entries but continue processing others
             print(f"Skipping invalid entry: {err.messages}")
     
+    # Validate and prepare to-read list data for AI context
     to_read_data = []
     for entry in to_read:
         try:
+            # Validate each to-read entry against ToReadSchema (book_name, author_name)
             validated = ToReadSchema().load(entry)
             to_read_data.append(validated)
         except ValidationError as err:
+            # Skip invalid entries but continue processing others
             print(f"Skipping invalid entry: {err.messages}")
     
-    # Build and split prompt into instruction and input
+    # Build the AI prompt using validated data
     prompt = build_prompt_from_data(prompt_data, to_read_data)
+    # Split prompt into system instruction and user input for better AI performance
     strings = prompt.split("\n")
-    instruction = strings[0]
-    inputPrompt = "\n".join(strings[1:])
+    instruction = strings[0]  # System role instruction (librarian persona)
+    inputPrompt = "\n".join(strings[1:])  # User input with reading history
     
+    # Print prompt for debugging if requested
     if debug:
         print("📤 Final Prompt Sent to OpenAI:")
         print(prompt)
 
-    # Generate recommendations using OpenAI API
+    # Call OpenAI API to generate book recommendations
     output = client.chat.completions.create(
-        model='gpt-3.5-turbo',
+        model='gpt-3.5-turbo',  # Use GPT-3.5 for cost-effective recommendations
         messages=[
-            {"role": "system", "content": instruction},
-            {"role": "user", "content": inputPrompt}        
+            {"role": "system", "content": instruction},  # AI role and behavior
+            {"role": "user", "content": inputPrompt}  # User's reading data
         ],
-        temperature=0.7,  # Controls creativity vs consistency
-        max_tokens=300    # Limits response length
+        temperature=0.7,  # Balance between creativity (1.0) and consistency (0.0)
+        max_tokens=300    # Limit response length to control costs and response time
     )
     
+    # Extract the AI-generated content from the API response
     finalOutput = output.choices[0].message.content
     
-    # Validate JSON response
+    # Validate and clean the JSON response from OpenAI
     try:
+        # Parse the JSON response from the AI
         recs = json.loads(finalOutput)
+        
+        # Ensure response is a list with exactly 3 recommendations
         if not isinstance(recs, list) or len(recs) != 3:
+            # Retry if format is incorrect
             return get_recommendations(past_entries, to_read, debug, retry_count + 1)
         
-        # Validate each recommendation
+        # Validate each individual recommendation object
         for rec in recs:
-            # Check required fields
+            # Ensure all required fields are present in each recommendation
             if not all(key in rec for key in ["title", "author", "description"]):
+                # Retry if any recommendation is missing required fields
                 return get_recommendations(past_entries, to_read, debug, retry_count + 1)
             
-            # Remove invalid Goodreads links
+            # Clean up invalid Goodreads links to prevent broken links in frontend
             if "link" in rec and not validate_goodreads_link(rec["link"]):
-                del rec["link"]
+                del rec["link"]  # Remove invalid link rather than keeping it
         
-        return json.dumps(recs)  # Return cleaned recommendations
+        # Return the validated and cleaned recommendations as JSON string
+        return json.dumps(recs)
     except json.JSONDecodeError:
+        # Retry if AI response is not valid JSON
         return get_recommendations(past_entries, to_read, debug, retry_count + 1)
 
 def build_prompt_from_data(entries: list, to_read: list) -> str:
@@ -138,21 +158,25 @@ def build_prompt_from_data(entries: list, to_read: list) -> str:
     Returns:
         str: Formatted prompt string for the OpenAI API
     """
-    # Build list of book reflections
+    # Build formatted list of user's book reflections for AI analysis
     reflections = []
     for book in entries:
+        # Format each book with its reflection for AI context
         reflections.append(
             f"{book['book_name']} by {book['author_name']}. "
             f"The reflection on this book is:\n {book['reflection']}"
         )
     
+    # Build formatted list of books user plans to read
     next_reads = []
     for book in to_read:
+        # Format each to-read book (no reflection needed)
         next_reads.append(
             f"{book['book_name']} by {book['author_name']}"
         )
     
-    # Construct librarian-style prompt
+    # Construct a detailed prompt that positions the AI as a knowledgeable librarian
+    # This persona helps generate more thoughtful and relevant recommendations
     prompt = (
         "You are a lifelong librarian known for giving spot-on book recommendations. "
         "You love helping readers find books that match their taste, tone, and interests.\n"
@@ -161,20 +185,20 @@ def build_prompt_from_data(entries: list, to_read: list) -> str:
         "Carefully analyze the themes, tone, and emotional impact to understand what I enjoy.\n"
         "Based on that, recommend EXACTLY 3 books I might enjoy next. You MUST format your response as a valid JSON array "
         "containing EXACTLY 3 objects. Each object MUST follow this structure:\n"
-        "[\n"
+        "[\n"  # Start JSON array structure example
         "  {\n"
-        '    "title": "Book Title",\n'
-        '    "author": "Author Name",\n'
-        '    "description": "Your 1-2 sentence explanation of why you recommend this book",\n'
-        '    "link": "OPTIONAL - Only include if you are absolutely certain of the correct Goodreads URL. Must start with https://www.goodreads.com/book/show/ followed by the book ID. If unsure, omit this field entirely."\n'
+        '    "title": "Book Title",\n'  # Required: Book title
+        '    "author": "Author Name",\n'  # Required: Author name  
+        '    "description": "Your 1-2 sentence explanation of why you recommend this book",\n'  # Required: Recommendation reason
+        '    "link": "OPTIONAL - Only include if you are absolutely certain of the correct Goodreads URL. Must start with https://www.goodreads.com/book/show/ followed by the book ID. If unsure, omit this field entirely."\n'  # Optional: Goodreads link
         "  },\n"
-        "  {...},\n"
-        "  {...}\n"
-        "]\n\n"
+        "  {...},\n"  # Placeholder for second recommendation
+        "  {...}\n"   # Placeholder for third recommendation
+        "]\n\n"  # End JSON array structure
         "Return ONLY the JSON array with no additional text. The response MUST be valid JSON and MUST contain exactly 3 recommendations. "
         "The link field is optional - only include it if you are 100% certain of the correct Goodreads URL. "
         "If you're not certain about a Goodreads link, omit the link field entirely rather than guessing."
     )
     
-    return prompt
+    return prompt  # Return the complete formatted prompt for OpenAI API
     

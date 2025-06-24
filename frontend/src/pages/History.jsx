@@ -1,58 +1,79 @@
 "use client"
 
+// React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
+// Lucide React icons for UI elements
 import { BookOpen, Search, Calendar, Trash2 } from "lucide-react"
+// Custom UI components
 import Card from "./components/Card"
 import Badge from "./components/Badge"
 import Input from "./components/Input"
+// User authentication context
 import { useUser } from "./UserContext"
+// API configuration for backend communication
 import { getApiUrl } from "../config"
 
 export default function History() {
+  // Get current authenticated user from context
   const user = useUser()
-  const [searchTerm, setSearchTerm] = useState("")
-  const [books, setBooks] = useState([])
-  const [loading, setLoading] = useState(true)
-  const [deleting, setDeleting] = useState(null)
+  
+  // Search and filter state
+  const [searchTerm, setSearchTerm] = useState("")  // For filtering books by title/author
+  
+  // Books data and loading states
+  const [books, setBooks] = useState([])           // User's complete reading history
+  const [loading, setLoading] = useState(true)     // Initial data loading state
+  const [deleting, setDeleting] = useState(null)   // Track which book is being deleted
 
+  // Fetch user's reading history when component mounts or user changes
   useEffect(() => {
     async function fetchBooks() {
+      // Don't fetch if user is not authenticated
       if (!user) return
+      
       try {
+        // Call backend API to get user's book collection
         const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
         if (!response.ok) {
           throw new Error('Failed to fetch books')
         }
+        
+        // Parse JSON response and update state
         const data = await response.json()
-        setBooks(data)
+        setBooks(data)  // Array of book objects with reflections
       } catch (err) {
         console.error("❌ Failed to fetch books:", err)
+        // Could add toast notification here for user feedback
       } finally {
-        setLoading(false)
+        setLoading(false)  // Always stop loading, even on error
       }
     }
 
     fetchBooks()
-  }, [user])
+  }, [user])  // Re-run when user authentication state changes
 
+  // Handle deletion of a book entry from user's history
   const handleDelete = async (book) => {
+    // Confirm deletion with user to prevent accidental deletions
     if (!confirm("Are you sure you want to delete this book entry? This action cannot be undone.")) {
       return
     }
 
+    // Create unique key for tracking deletion state
     const deleteKey = `${book.book_name}-${book.author_name}`
-    setDeleting(deleteKey)
+    setDeleting(deleteKey)  // Show loading state for this specific book
 
     try {
+      // Send DELETE request to backend API
       const response = await fetch(getApiUrl('books/delete'), {
         method: 'DELETE',
         headers: {
           'Content-Type': 'application/json',
         },
         body: JSON.stringify({
-          user_id: user.id,
-          book_name: book.book_name,
-          author_name: book.author_name
+          user_id: user.id,              // For security - ensure user owns the book
+          book_name: book.book_name,     // Book identification
+          author_name: book.author_name  // Additional identification
         })
       })
 

@@ -1,43 +1,56 @@
 "use client"
 
+// React hooks for component lifecycle and state management
 import { useState, useEffect } from "react"
+// Lucide React icons for UI elements and password visibility toggle
 import { BookOpen, Eye, EyeOff } from "lucide-react"
+// Supabase client for password reset functionality
 import { supabase } from "../lib/supabase"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
+// Custom UI components
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 
 export default function UpdatePasswordPage({ onNavigateToSignIn }) {
+  // Password update form state
   const [formData, setFormData] = useState({
-    password: "",
-    confirmPassword: "",
+    password: "",         // New password
+    confirmPassword: "", // Password confirmation
   })
-  const [loading, setLoading] = useState(false)
-  const [showPassword, setShowPassword] = useState(false)
-  const [showConfirmPassword, setShowConfirmPassword] = useState(false)
-  const [isValidSession, setIsValidSession] = useState(false)
-  const [isCheckingSession, setIsCheckingSession] = useState(true)
+  
+  // UI and loading states
+  const [loading, setLoading] = useState(false)                   // Form submission loading
+  const [showPassword, setShowPassword] = useState(false)         // Toggle password visibility
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false) // Toggle confirm password visibility
+  
+  // Session validation states
+  const [isValidSession, setIsValidSession] = useState(false)     // Whether user has valid reset session
+  const [isCheckingSession, setIsCheckingSession] = useState(true) // Loading state for session check
 
-  // Check if user has valid password reset session
+  // Validate that user has a valid password reset session on component mount
+  // This ensures the page can only be accessed through a valid reset link
   useEffect(() => {
     const checkSession = async () => {
       try {
+        // Get current authentication session from Supabase
         const { data: { session }, error } = await supabase.auth.getSession()
 
         if (error) {
           console.error('Session check error:', error)
           setIsValidSession(false)
-          toast.error("Invalid or expired reset link")
+          toast.error("Invalid or expired reset link")  // User-friendly error message
           return
         }
 
-        // Check if this is a password recovery session
+        // Verify this is a valid password recovery session
         if (session?.user) {
-          setIsValidSession(true)
+          setIsValidSession(true)   // Allow password update
         } else {
-          setIsValidSession(false)
+          setIsValidSession(false)  // Block access - no valid session
           toast.error("Invalid or expired reset link. Please request a new one.")
         }
       } catch (err) {

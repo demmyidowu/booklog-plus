@@ -6,7 +6,7 @@ These schemas ensure data consistency and provide validation for book entries
 before they are stored in the database or processed by the application.
 """
 
-from marshmallow import Schema, fields, ValidationError, EXCLUDE
+from marshmallow import Schema, fields, ValidationError, EXCLUDE  # Data validation library
 
 class BooksSchema(Schema):
     """
@@ -29,9 +29,11 @@ class BooksSchema(Schema):
         ... }
         >>> validated = schema.load(data)
     """
-    book_name = fields.String(required=True)
-    author_name = fields.String(required=True)
-    reflection = fields.String(required=True)
+    # Define required string fields for book entries
+    # Each field must be present and must be a string type
+    book_name = fields.String(required=True)    # Book title - required for identification
+    author_name = fields.String(required=True)  # Author name - required for identification  
+    reflection = fields.String(required=True)   # User's thoughts - required for AI recommendations
     
     class Meta:
         """
@@ -42,6 +44,8 @@ class BooksSchema(Schema):
                              when loading data, preventing unexpected data
                              from being processed.
         """
+        # EXCLUDE unknown fields to prevent malicious data injection
+        # This ensures only defined fields are processed
         unknown = EXCLUDE
 
 class ToReadSchema(Schema):
@@ -63,8 +67,10 @@ class ToReadSchema(Schema):
         ... }
         >>> validated = schema.load(data)
     """
-    book_name = fields.String(required=True)
-    author_name = fields.String(required=True)
+    # Define required fields for to-read entries (simpler than book entries)
+    # No reflection field needed since user hasn't read the book yet
+    book_name = fields.String(required=True)    # Book title - required for identification
+    author_name = fields.String(required=True)  # Author name - required for identification
     
     class Meta:
         """
@@ -75,4 +81,6 @@ class ToReadSchema(Schema):
                              when loading data, preventing unexpected data
                              from being processed.
         """
+        # EXCLUDE unknown fields for security - only allow defined fields
+        # This prevents injection of unexpected data into the system
         unknown = EXCLUDE

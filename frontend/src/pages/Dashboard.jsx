@@ -1,15 +1,23 @@
 "use client"
 
+// React hooks for state management and lifecycle
 import { useState, useEffect } from "react"
+// Lucide React icons for UI elements
 import { BookOpen, Target, TrendingUp, Calendar, Clock, Award } from "lucide-react"
+// Custom UI components
 import Card from "./components/Card"
 import Badge from "./components/Badge"
+import Button from "./components/Button"
+// User authentication context
 import { useUser } from "./UserContext.jsx"
 import SignInPage from "./SignInPage.jsx"
+// Supabase client for database operations
 import { supabase } from "../lib/supabase"
-import Button from "./components/Button"
+// API configuration
 import { getApiUrl } from "../config"
 
+// Collection of inspirational reading quotes to display on dashboard
+// These quotes rotate to provide motivation and celebrate reading culture
 const READING_QUOTES = [
   { quote: "A reader lives a thousand lives before he dies. The man who never reads lives only one.", author: "George R.R. Martin" },
   { quote: "Books are a uniquely portable magic.", author: "Stephen King" },

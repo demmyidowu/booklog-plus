@@ -1,48 +1,70 @@
 "use client"
 
+// React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
+// Lucide React icons for UI elements
 import { BookOpen, Search, Calendar, Trash2, Plus, CheckCircle, X, ExternalLink } from "lucide-react"
+// Custom UI components
 import Card from "./components/Card"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
 import Button from "./components/Button"
+// User authentication context
 import { useUser } from "./UserContext"
+// API configuration for backend communication
 import { getApiUrl } from "../config"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
 
 export default function FutureReads() {
+    // Get current authenticated user from context
     const user = useUser()
-    const [searchTerm, setSearchTerm] = useState("")
-    const [books, setBooks] = useState([])
-    const [loading, setLoading] = useState(true)
-    const [deleting, setDeleting] = useState(null)
-    const [showAddModal, setShowAddModal] = useState(false)
-    const [newBook, setNewBook] = useState({ book_name: "", author_name: "" })
-    const [addingBook, setAddingBook] = useState(false)
-    const [goodreadsLinks, setGoodreadsLinks] = useState({})
-    const [searchingGoodreads, setSearchingGoodreads] = useState(new Set())
+    
+    // Search and filter state
+    const [searchTerm, setSearchTerm] = useState("")  // For filtering books by title/author
+    
+    // Books data and loading states
+    const [books, setBooks] = useState([])           // List of to-read books
+    const [loading, setLoading] = useState(true)     // Initial data loading
+    const [deleting, setDeleting] = useState(null)   // Track which book is being deleted
+    
+    // Add new book modal state
+    const [showAddModal, setShowAddModal] = useState(false)  // Show/hide add book modal
+    const [newBook, setNewBook] = useState({ book_name: "", author_name: "" })  // New book form data
+    const [addingBook, setAddingBook] = useState(false)      // Adding book loading state
+    
+    // Goodreads integration state
+    const [goodreadsLinks, setGoodreadsLinks] = useState({})          // Cache of Goodreads URLs
+    const [searchingGoodreads, setSearchingGoodreads] = useState(new Set())  // Track ongoing searches
 
-    // Quick-log modal state
-    const [showQuickLog, setShowQuickLog] = useState(false)
-    const [selectedBook, setSelectedBook] = useState(null)
-    const [reflection, setReflection] = useState("")
-    const [quickLogLoading, setQuickLogLoading] = useState(false)
+    // Quick-log modal state (for moving to-read books to read books)
+    const [showQuickLog, setShowQuickLog] = useState(false)    // Show/hide quick log modal
+    const [selectedBook, setSelectedBook] = useState(null)     // Book selected for quick logging
+    const [reflection, setReflection] = useState("")           // Reflection text for quick log
+    const [quickLogLoading, setQuickLogLoading] = useState(false)  // Quick log submission loading
 
-    // Function to search for Goodreads links
+    // Function to generate Goodreads search links for books
+    // This creates searchable URLs rather than direct book links
     const searchGoodreadsLink = async (bookName, authorName) => {
-        const searchKey = `${bookName}-${authorName}`
+        const searchKey = `${bookName}-${authorName}`  // Unique key for caching
+        
+        // Skip if already searched or currently searching
         if (goodreadsLinks[searchKey] || searchingGoodreads.has(searchKey)) {
             return // Already searched or searching
         }
 
+        // Mark as currently searching to prevent duplicate requests
         setSearchingGoodreads(prev => new Set([...prev, searchKey]))
 
         try {
-            // Simple search URL construction (users can search manually)
+            // Create Goodreads search URL (users can manually search)
+            // This is safer than trying to guess exact book URLs
             const searchQuery = encodeURIComponent(bookName)
             const goodreadsSearchUrl = `https://www.goodreads.com/search?q=${searchQuery}`
 
+            // Cache the search URL for this book
             setGoodreadsLinks(prev => ({
                 ...prev,
                 [searchKey]: goodreadsSearchUrl

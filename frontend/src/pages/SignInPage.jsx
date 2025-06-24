@@ -1,38 +1,53 @@
 "use client"
 
+// React hook for component state management
 import { useState } from "react"
+// Lucide React icon for branding
 import { BookOpen } from "lucide-react"
+// Supabase client for authentication
 import { supabase } from "../lib/supabase"
+// Custom UI components
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 
 export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
-  const [email, setEmail] = useState("")
-  const [password, setPassword] = useState("")
-  const [loading, setLoading] = useState(false)
+  // Form state for authentication credentials
+  const [email, setEmail] = useState("")        // User's email address
+  const [password, setPassword] = useState("")  // User's password
+  const [loading, setLoading] = useState(false) // Loading state during authentication
 
+  // Handle form submission for user authentication
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault()  // Prevent default form submission behavior
+    setLoading(true)    // Show loading state during authentication
 
     try {
+      // Attempt to authenticate user with Supabase
       const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
+        email,     // User's email address
+        password   // User's password
       })
 
+      // Handle authentication errors
       if (error) {
-        trackError(error, { email }, 'SignIn')
-        toast.error("Sign-in failed: " + error.message)
-        return
+        trackError(error, { email }, 'SignIn')  // Track error for analytics
+        toast.error("Sign-in failed: " + error.message)  // Show user-friendly error
+        return  // Exit early on error
       }
 
+      // Track successful authentication for analytics
       trackEvent('Auth', 'Sign In Successful')
-      localStorage.setItem("currentPage", "dashboard") // BONUS: persist page
-      onSignIn?.() // call only if passed in
+      
+      // Persist user's preferred page in localStorage for better UX
+      localStorage.setItem("currentPage", "dashboard")
+      
+      // Call parent component's sign-in handler if provided
+      onSignIn?.()  // Optional chaining - only call if function exists
     } catch (err) {
       trackError(err, { email }, 'SignIn')
       toast.error("An unexpected error occurred")
@@ -41,11 +56,15 @@ export default function SignInPage({ onNavigateToSignUp, onSignIn }) {
     }
   }
 
+  // Handle password reset functionality
   const handleForgotPassword = async () => {
+    // Validate that user has entered an email address
     if (!email) return alert("Enter your email first.")
+    
     try {
+      // Send password reset email through Supabase
       const { error } = await supabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${window.location.origin}/update-password`,
+        redirectTo: `${window.location.origin}/update-password`,  // Redirect URL after reset
       })
 
       if (error) {

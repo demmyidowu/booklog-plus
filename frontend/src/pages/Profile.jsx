@@ -1,51 +1,71 @@
 "use client"
 
+// React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
+// Lucide React icons for UI elements
 import { User, LogOut } from "lucide-react"
+// Supabase client for authentication and profile management
 import { supabase } from "../lib/supabase"
+// Custom UI components
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+// Toast notifications for user feedback
 import toast from "react-hot-toast"
+// User authentication context
 import { useUser } from "./UserContext"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
+// API configuration for backend communication
 import { getApiUrl } from "../config"
 
 export default function Profile({ onSignOut }) {
+  // Get current authenticated user from context
   const user = useUser()
-  // Initialize state from user metadata if available
-  const [firstName, setFirstName] = useState(user?.user_metadata?.name || "")
-  const [initialName, setInitialName] = useState(user?.user_metadata?.name || "")
-  const [isLoading, setIsLoading] = useState(false)
-  const [bookCount, setBookCount] = useState(0)
-  const [favoriteGenre, setFavoriteGenre] = useState("")
-  const [readingGoal, setReadingGoal] = useState("")
+  
+  // Profile form state - initialize from user metadata if available
+  const [firstName, setFirstName] = useState(user?.user_metadata?.name || "")    // User's display name
+  const [initialName, setInitialName] = useState(user?.user_metadata?.name || "") // Original name for comparison
+  const [isLoading, setIsLoading] = useState(false)                              // Loading state for operations
+  
+  // Reading statistics and preferences
+  const [bookCount, setBookCount] = useState(0)           // Total books read by user
+  const [favoriteGenre, setFavoriteGenre] = useState("")  // User's preferred genre (future feature)
+  const [readingGoal, setReadingGoal] = useState("")      // Annual reading goal (future feature)
 
-  // Update state when user data changes
+  // Update profile form state when user authentication data changes
+  // This ensures the form reflects the latest user information
   useEffect(() => {
     if (user?.user_metadata?.name) {
-      setFirstName(user.user_metadata.name)
-      setInitialName(user.user_metadata.name)
+      setFirstName(user.user_metadata.name)    // Update display name
+      setInitialName(user.user_metadata.name)  // Update comparison baseline
     }
-  }, [user])
+  }, [user])  // Re-run when user object changes
 
+  // Fetch user's reading statistics when component mounts or user changes
   useEffect(() => {
     async function fetchProfile() {
+      // Don't fetch if user is not authenticated
       if (!user) return
+      
       setIsLoading(true)
       try {
-        // Fetch book count from your Flask backend
+        // Fetch user's complete book collection to calculate statistics
         const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
         if (!response.ok) {
           throw new Error('Failed to fetch books')
         }
+        
+        // Parse response and calculate book count for profile display
         const books = await response.json()
-        setBookCount(books.length)
+        setBookCount(books.length)  // Set total number of books read
+        
+        // TODO: Add genre analysis and reading streak calculations
       } catch (err) {
         console.error("❌ Error:", err)
-        toast.error("Failed to load some data")
+        toast.error("Failed to load some data")  // User-friendly error message
       } finally {
-        setIsLoading(false)
+        setIsLoading(false)  // Always stop loading, even on error
       }
     }
 

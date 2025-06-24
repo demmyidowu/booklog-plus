@@ -1,49 +1,60 @@
 "use client"
 
+// React hook for component state management
 import { useState } from "react"
+// Lucide React icon for branding
 import { BookOpen } from "lucide-react"
+// Supabase client for user registration
 import { supabase } from "../lib/supabase"
+// Analytics tracking for user interactions
 import { trackEvent, trackError } from '../lib/analytics'
+// Custom UI components
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Card from "./components/Card"
+// Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 
 export default function SignUpPage({ onNavigateToSignIn }) {
+  // Registration form state management
   const [formData, setFormData] = useState({
-    name: "",
-    email: "",
-    password: "",
-    confirmPassword: "",
+    name: "",            // User's display name
+    email: "",           // User's email address (used for login)
+    password: "",        // User's chosen password
+    confirmPassword: "", // Password confirmation for validation
   })
-  const [loading, setLoading] = useState(false)
+  const [loading, setLoading] = useState(false)  // Loading state during registration
 
+  // Handle form input changes
+  // Updates the form state when user types in any input field
   const handleChange = (e) => {
     setFormData((prev) => ({
       ...prev,
-      [e.target.name]: e.target.value,
+      [e.target.name]: e.target.value,  // Update specific field based on input name
     }))
   }
 
+  // Handle form submission for user registration
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault()  // Prevent default form submission behavior
+    setLoading(true)    // Show loading state during registration
 
     try {
-      // Check if passwords match
+      // Client-side validation: ensure passwords match
       if (formData.password !== formData.confirmPassword) {
         toast.error("Passwords do not match")
-        return
+        return  // Exit early if validation fails
       }
 
+      // Attempt to register user with Supabase Auth
       const { data: signUpData, error: signUpError } = await supabase.auth.signUp({
-        email: formData.email,
-        password: formData.password,
+        email: formData.email,     // User's email for authentication
+        password: formData.password, // User's chosen password
         options: {
           data: {
-            name: formData.name,
+            name: formData.name,   // Store user's name in metadata
           },
-          emailRedirectTo: `${window.location.origin}/signin`
+          emailRedirectTo: `${window.location.origin}/signin`  // Redirect after email confirmation
         },
       })
 

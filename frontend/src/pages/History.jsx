@@ -3,15 +3,19 @@
 // React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
 // Lucide React icons for UI elements
-import { BookOpen, Search, Calendar, Trash2 } from "lucide-react"
+import { BookOpen, Search, Calendar, Trash2, Share, Edit } from "lucide-react"
 // Custom UI components
 import Card from "./components/Card"
 import Badge from "./components/Badge"
 import Input from "./components/Input"
+import ShareModal from "./components/ShareModal"
+import EditBookModal from "./components/EditBookModal"
 // User authentication context
 import { useUser } from "./UserContext"
 // API configuration for backend communication
 import { getApiUrl } from "../config"
+// Toast notifications for user feedback
+import { toast } from "react-hot-toast"
 
 export default function History() {
   // Get current authenticated user from context
@@ -24,6 +28,12 @@ export default function History() {
   const [books, setBooks] = useState([])           // User's complete reading history
   const [loading, setLoading] = useState(true)     // Initial data loading state
   const [deleting, setDeleting] = useState(null)   // Track which book is being deleted
+
+  // Modal states
+  const [showShareModal, setShowShareModal] = useState(false)
+  const [showEditModal, setShowEditModal] = useState(false)
+  const [selectedBook, setSelectedBook] = useState(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   // Fetch user's reading history when component mounts or user changes
   useEffect(() => {
@@ -92,6 +102,74 @@ export default function History() {
     }
   }
 
+  // Handle opening share modal
+  const handleShare = (book) => {
+    setSelectedBook(book)
+    setShowShareModal(true)
+  }
+
+  // Handle opening edit modal
+  const handleEdit = (book) => {
+    setSelectedBook(book)
+    setShowEditModal(true)
+  }
+
+  // Handle closing modals
+  const closeModals = () => {
+    setShowShareModal(false)
+    setShowEditModal(false)
+    setSelectedBook(null)
+  }
+
+  // Handle saving edited book
+  const handleEditSave = async (formData) => {
+    if (!user || !selectedBook) return
+
+    setEditLoading(true)
+
+    try {
+      const response = await fetch(getApiUrl('books/update'), {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          user_id: user.id,
+          original_book_name: selectedBook.book_name,
+          original_author_name: selectedBook.author_name,
+          book_name: formData.book_name.trim(),
+          author_name: formData.author_name.trim(),
+          reflection: formData.reflection.trim()
+        })
+      })
+
+      if (!response.ok) {
+        const errorData = await response.json()
+        throw new Error(errorData.message || 'Failed to update book')
+      }
+
+      // Update the book in local state
+      setBooks(books.map(book => 
+        book.book_name === selectedBook.book_name && book.author_name === selectedBook.author_name
+          ? { 
+              ...book, 
+              book_name: formData.book_name.trim(),
+              author_name: formData.author_name.trim(),
+              reflection: formData.reflection.trim()
+            }
+          : book
+      ))
+
+      toast.success('Book updated successfully!')
+      closeModals()
+    } catch (err) {
+      console.error("❌ Failed to update book:", err)
+      toast.error('Failed to update book. Please try again.')
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   const filteredBooks = books.filter((book) => {
     return (
       book.book_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -142,20 +220,35 @@ export default function History() {
               <Card key={book.id} className="border-slate-200 relative">
                 <div className="p-6">
                   <div className="flex gap-4">
-                    {/* Delete button */}
-                    <button
-                      onClick={() => handleDelete(book)}
-                      disabled={deleting === `${book.book_name}-${book.author_name}`}
-                      className="absolute top-4 right-4 p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors opacity-0 group-hover:opacity-100 disabled:opacity-50 shadow-md border border-slate-300 bg-white z-10"
-                      title="Delete book entry"
-                      style={{ opacity: 1 }}
-                    >
-                      {deleting === `${book.book_name}-${book.author_name}` ? (
-                        <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                      ) : (
-                        <Trash2 className="h-4 w-4" />
-                      )}
-                    </button>
+                    {/* Action buttons */}
+                    <div className="absolute top-4 right-4 flex gap-1 z-10">
+                      <button
+                        onClick={() => handleShare(book)}
+                        className="p-2 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white"
+                        title="Share book"
+                      >
+                        <Share className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleEdit(book)}
+                        className="p-2 text-slate-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white"
+                        title="Edit book"
+                      >
+                        <Edit className="h-4 w-4" />
+                      </button>
+                      <button
+                        onClick={() => handleDelete(book)}
+                        disabled={deleting === `${book.book_name}-${book.author_name}`}
+                        className="p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shadow-md border border-slate-300 bg-white"
+                        title="Delete book entry"
+                      >
+                        {deleting === `${book.book_name}-${book.author_name}` ? (
+                          <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                        ) : (
+                          <Trash2 className="h-4 w-4" />
+                        )}
+                      </button>
+                    </div>
                     <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-blue-600 rounded-lg flex items-center justify-center flex-shrink-0">
                       <BookOpen className="h-5 w-5 text-white" />
                     </div>
@@ -175,6 +268,23 @@ export default function History() {
           )}
         </div>
       </div>
+
+      {/* Share Modal */}
+      <ShareModal
+        book={selectedBook}
+        isOpen={showShareModal}
+        onClose={closeModals}
+      />
+
+      {/* Edit Modal */}
+      <EditBookModal
+        book={selectedBook}
+        isOpen={showEditModal}
+        onClose={closeModals}
+        onSave={handleEditSave}
+        includeReflection={true}
+        loading={editLoading}
+      />
     </div>
   )
 }

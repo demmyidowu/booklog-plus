@@ -263,6 +263,110 @@ def delete_to_read_entry(entry: dict, user_id: str) -> bool:
         print(f"❌ Error in delete_to_read_entry: {str(e)}")  # Debug log
         raise
 
+def update_book_entry(original_book_name: str, original_author_name: str, book_name: str, author_name: str, reflection: str, user_id: str) -> bool:
+    """
+    Update a specific book entry in the user's library in Supabase.
+    
+    Args:
+        original_book_name (str): Current title of the book to find
+        original_author_name (str): Current author of the book to find
+        book_name (str): New title of the book
+        author_name (str): New author of the book
+        reflection (str): New reflection content
+        user_id (str): Unique identifier for the user (for security)
+        
+    Returns:
+        bool: True if update was successful, False otherwise
+        
+    Raises:
+        Exception: If the Supabase update operation fails
+        
+    Example:
+        >>> success = update_book_entry("Old Title", "Old Author", "1984", "George Orwell", "Updated reflection", "user456")
+        >>> if success:
+        ...     print("Book updated successfully")
+    """
+    try:
+        print(f"✏️ Attempting to update book '{original_book_name}' by '{original_author_name}' for user {user_id}")  # Debug log
+        
+        # Update the book entry by matching original book details and user_id
+        # Triple condition ensures security - users can only update their own books
+        response = supabase.table("book_logs").update({
+            "book_name": book_name,
+            "author_name": author_name,
+            "reflection": reflection
+        }).eq("book_name", original_book_name).eq("author_name", original_author_name).eq("user_id", user_id).execute()
+        
+        print("📡 Supabase update response:", response)  # Debug log
+        
+        # Check for database errors during update
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        # Check if any rows were actually updated
+        if response.data and len(response.data) > 0:
+            print("✅ Book entry updated successfully:", response.data)  # Debug log
+            return True  # Update successful
+        else:
+            print("⚠️ No book entry found to update (may not exist or not owned by user)")
+            return False  # No matching record found
+            
+    except Exception as e:
+        print(f"❌ Error in update_book_entry: {str(e)}")  # Debug log
+        raise
+
+def update_to_read_entry(original_book_name: str, original_author_name: str, book_name: str, author_name: str, user_id: str) -> bool:
+    """
+    Update a specific book entry in the user's to-read list in Supabase.
+    
+    Args:
+        original_book_name (str): Current title of the book to find
+        original_author_name (str): Current author of the book to find
+        book_name (str): New title of the book
+        author_name (str): New author of the book
+        user_id (str): Unique identifier for the user (for security)
+        
+    Returns:
+        bool: True if update was successful, False otherwise
+        
+    Raises:
+        Exception: If the Supabase update operation fails
+        
+    Example:
+        >>> success = update_to_read_entry("Old Title", "Old Author", "New Title", "New Author", "user456")
+        >>> if success:
+        ...     print("To-read book updated successfully")
+    """
+    try:
+        print(f"✏️ Attempting to update to-read book '{original_book_name}' by '{original_author_name}' for user {user_id}")  # Debug log
+        
+        # Update the to-read entry by matching original book details and user_id
+        # Triple condition ensures security - users can only update their own entries
+        response = supabase.table("to_read_logs").update({
+            "book_name": book_name,
+            "author_name": author_name
+        }).eq("book_name", original_book_name).eq("author_name", original_author_name).eq("user_id", user_id).execute()
+        
+        print("📡 Supabase update response:", response)  # Debug log
+        
+        # Check for database errors during update operation
+        if hasattr(response, 'error') and response.error:
+            print("❌ Supabase error:", response.error)  # Debug log
+            raise Exception(f"Supabase error: {response.error}")
+            
+        # Verify that the update actually affected some rows
+        if response.data and len(response.data) > 0:
+            print("✅ To-read entry updated successfully:", response.data)  # Debug log
+            return True  # Update was successful
+        else:
+            print("⚠️ No to-read entry found to update (may not exist or not owned by user)")
+            return False  # No matching record found
+            
+    except Exception as e:
+        print(f"❌ Error in update_to_read_entry: {str(e)}")  # Debug log
+        raise
+
 def get_user_name(user_id: str) -> str | None:
     """
     Retrieve the user's name from their profile in Supabase.

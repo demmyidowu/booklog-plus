@@ -3,12 +3,14 @@
 // React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
 // Lucide React icons for UI elements
-import { BookOpen, Search, Calendar, Trash2, Plus, CheckCircle, X, ExternalLink } from "lucide-react"
+import { BookOpen, Search, Calendar, Trash2, Plus, CheckCircle, X, ExternalLink, Share, Edit } from "lucide-react"
 // Custom UI components
 import Card from "./components/Card"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
 import Button from "./components/Button"
+import ShareModal from "./components/ShareModal"
+import EditBookModal from "./components/EditBookModal"
 // User authentication context
 import { useUser } from "./UserContext"
 // API configuration for backend communication
@@ -44,6 +46,12 @@ export default function FutureReads() {
     const [selectedBook, setSelectedBook] = useState(null)     // Book selected for quick logging
     const [reflection, setReflection] = useState("")           // Reflection text for quick log
     const [quickLogLoading, setQuickLogLoading] = useState(false)  // Quick log submission loading
+
+    // Share and Edit modals state
+    const [showShareModal, setShowShareModal] = useState(false)
+    const [showEditModal, setShowEditModal] = useState(false)
+    const [selectedBookForModal, setSelectedBookForModal] = useState(null)
+    const [editLoading, setEditLoading] = useState(false)
 
     // Function to generate Goodreads search links for books
     // This creates searchable URLs rather than direct book links
@@ -269,6 +277,82 @@ export default function FutureReads() {
         }
     }
 
+    // Handle opening share modal
+    const handleShare = (book) => {
+        setSelectedBookForModal(book)
+        setShowShareModal(true)
+    }
+
+    // Handle opening edit modal
+    const handleEdit = (book) => {
+        setSelectedBookForModal(book)
+        setShowEditModal(true)
+    }
+
+    // Handle closing share/edit modals
+    const closeShareEditModals = () => {
+        setShowShareModal(false)
+        setShowEditModal(false)
+        setSelectedBookForModal(null)
+    }
+
+    // Handle saving edited book
+    const handleEditSave = async (formData) => {
+        if (!user || !selectedBookForModal) return
+
+        setEditLoading(true)
+
+        try {
+            const response = await fetch(getApiUrl('to-read/update'), {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({
+                    user_id: user.id,
+                    original_book_name: selectedBookForModal.book_name,
+                    original_author_name: selectedBookForModal.author_name,
+                    book_name: formData.book_name.trim(),
+                    author_name: formData.author_name.trim()
+                })
+            })
+
+            if (!response.ok) {
+                const errorData = await response.json()
+                throw new Error(errorData.message || 'Failed to update book')
+            }
+
+            // Update the book in local state
+            setBooks(books.map(book => 
+                book.book_name === selectedBookForModal.book_name && book.author_name === selectedBookForModal.author_name
+                    ? { 
+                        ...book, 
+                        book_name: formData.book_name.trim(),
+                        author_name: formData.author_name.trim()
+                    }
+                    : book
+            ))
+
+            // Update Goodreads links cache
+            const oldKey = `${selectedBookForModal.book_name}-${selectedBookForModal.author_name}`
+            const newKey = `${formData.book_name.trim()}-${formData.author_name.trim()}`
+            if (oldKey !== newKey) {
+                // Generate new Goodreads link
+                searchGoodreadsLink(formData.book_name.trim(), formData.author_name.trim())
+            }
+
+            toast.success('Book updated successfully!')
+            trackEvent('FutureReads', 'Book Edited')
+            closeShareEditModals()
+        } catch (err) {
+            console.error("❌ Failed to update book:", err)
+            trackError(err, { userId: user?.id, book_name: selectedBookForModal?.book_name }, 'FutureReads')
+            toast.error('Failed to update book. Please try again.')
+        } finally {
+            setEditLoading(false)
+        }
+    }
+
     const filteredBooks = books.filter((book) => {
         return (
             book.book_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -339,19 +423,35 @@ export default function FutureReads() {
                                     <Card key={`${book.book_name}-${book.author_name}-${index}`} className="border-slate-200 relative">
                                         <div className="p-6">
                                             <div className="flex gap-4">
-                                                {/* Delete button */}
-                                                <button
-                                                    onClick={() => handleDelete(book)}
-                                                    disabled={deleting === `${book.book_name}-${book.author_name}`}
-                                                    className="absolute top-4 right-4 p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white z-10"
-                                                    title="Remove from future reads"
-                                                >
-                                                    {deleting === `${book.book_name}-${book.author_name}` ? (
-                                                        <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
-                                                    ) : (
-                                                        <Trash2 className="h-4 w-4" />
-                                                    )}
-                                                </button>
+                                                {/* Action buttons */}
+                                                <div className="absolute top-4 right-4 flex gap-1 z-10">
+                                                    <button
+                                                        onClick={() => handleShare(book)}
+                                                        className="p-2 text-slate-700 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white"
+                                                        title="Share book"
+                                                    >
+                                                        <Share className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleEdit(book)}
+                                                        className="p-2 text-slate-700 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors shadow-md border border-slate-300 bg-white"
+                                                        title="Edit book"
+                                                    >
+                                                        <Edit className="h-4 w-4" />
+                                                    </button>
+                                                    <button
+                                                        onClick={() => handleDelete(book)}
+                                                        disabled={deleting === `${book.book_name}-${book.author_name}`}
+                                                        className="p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shadow-md border border-slate-300 bg-white"
+                                                        title="Remove from future reads"
+                                                    >
+                                                        {deleting === `${book.book_name}-${book.author_name}` ? (
+                                                            <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
+                                                        ) : (
+                                                            <Trash2 className="h-4 w-4" />
+                                                        )}
+                                                    </button>
+                                                </div>
 
                                                 <div className="w-12 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-lg flex items-center justify-center flex-shrink-0">
                                                     <BookOpen className="h-5 w-5 text-white" />
@@ -542,6 +642,23 @@ export default function FutureReads() {
                     </Card>
                 </div>
             )}
+
+            {/* Share Modal */}
+            <ShareModal
+                book={selectedBookForModal}
+                isOpen={showShareModal}
+                onClose={closeShareEditModals}
+            />
+
+            {/* Edit Modal */}
+            <EditBookModal
+                book={selectedBookForModal}
+                isOpen={showEditModal}
+                onClose={closeShareEditModals}
+                onSave={handleEditSave}
+                includeReflection={false}
+                loading={editLoading}
+            />
         </>
     )
 }

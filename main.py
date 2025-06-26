@@ -17,7 +17,7 @@ import os
 from api.rec_engine import get_recommendations
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
-from core.logic import save_book_entry, load_book_entries, delete_book_entry, save_to_read_entry, load_to_read_list, delete_to_read_entry
+from core.logic import save_book_entry, load_book_entries, delete_book_entry, save_to_read_entry, load_to_read_list, delete_to_read_entry, update_book_entry, update_to_read_entry
 from data.schema import BooksSchema, ToReadSchema, ValidationError
 from dotenv import load_dotenv
 
@@ -190,6 +190,52 @@ def delete_book():
             
     except Exception as e:
         print("❌ Unexpected error in delete_book:", str(e))  # Debug log
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/books/update", methods=["PUT"])
+def update_book():
+    """
+    Update a specific book entry in the user's library.
+    
+    Expects a JSON payload with:
+    {
+        "user_id": "string",
+        "original_book_name": "string",
+        "original_author_name": "string",
+        "book_name": "string",
+        "author_name": "string",
+        "reflection": "string"
+    }
+    
+    Returns:
+        JSON response with success message or error details
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+            
+        user_id = data.get("user_id")
+        original_book_name = data.get("original_book_name")
+        original_author_name = data.get("original_author_name")
+        book_name = data.get("book_name")
+        author_name = data.get("author_name")  
+        reflection = data.get("reflection")
+        
+        if not all([user_id, original_book_name, original_author_name, book_name, author_name, reflection]):
+            return jsonify({"message": "Missing required parameters"}), 400
+        
+        # Call the update function from core logic
+        success = update_book_entry(original_book_name, original_author_name, book_name, author_name, reflection, user_id)
+        if success:
+            return jsonify({"message": "Book updated successfully"}), 200
+        else:
+            return jsonify({"message": "Book not found or not owned by user"}), 404
+        
+    except Exception as e:
+        print("❌ Unexpected error in update_book:", str(e))
         return jsonify({"message": str(e)}), 500
 
 
@@ -387,6 +433,50 @@ def delete_to_read():
             
     except Exception as e:
         print("❌ Unexpected error in delete_to_read:", str(e))  # Debug log
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/to-read/update", methods=["PUT"])
+def update_to_read():
+    """
+    Update a specific book entry in the user's to-read list.
+    
+    Expects a JSON payload with:
+    {
+        "user_id": "string",
+        "original_book_name": "string",
+        "original_author_name": "string", 
+        "book_name": "string",
+        "author_name": "string"
+    }
+    
+    Returns:
+        JSON response with success message or error details
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+            
+        user_id = data.get("user_id")
+        original_book_name = data.get("original_book_name")
+        original_author_name = data.get("original_author_name")
+        book_name = data.get("book_name")
+        author_name = data.get("author_name")
+        
+        if not all([user_id, original_book_name, original_author_name, book_name, author_name]):
+            return jsonify({"message": "Missing required parameters"}), 400
+        
+        # Call the update function from core logic
+        success = update_to_read_entry(original_book_name, original_author_name, book_name, author_name, user_id)
+        if success:
+            return jsonify({"message": "To-read book updated successfully"}), 200
+        else:
+            return jsonify({"message": "To-read book not found or not owned by user"}), 404
+        
+    except Exception as e:
+        print("❌ Unexpected error in update_to_read:", str(e))
         return jsonify({"message": str(e)}), 500
     
 

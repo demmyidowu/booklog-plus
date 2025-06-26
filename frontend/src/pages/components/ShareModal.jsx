@@ -81,14 +81,6 @@ Find it on Goodreads: ${goodreadsUrl}
     window.open(`sms:?body=${text}`)
   }
 
-  const handleInstagramShare = () => {
-    // Instagram doesn't support direct text sharing, so we'll copy to clipboard
-    handleCopyToClipboard()
-    toast("Text copied! Paste it in your Instagram post", {
-      icon: "📷",
-      duration: 4000
-    })
-  }
 
   const handleTwitterShare = () => {
     const text = encodeURIComponent(shareText)
@@ -116,9 +108,10 @@ Find it on Goodreads: ${goodreadsUrl}
             <p className="text-sm text-slate-600 mb-3">by {book.author_name}</p>
           </div>
 
-          <div className="space-y-3">
-            {/* Web Share API (Mobile) */}
-            {navigator.share && (
+          {/* Primary Actions */}
+          <div className="space-y-3 mb-4">
+            {/* Web Share API (Mobile) or Copy to Clipboard */}
+            {navigator.share ? (
               <Button
                 onClick={handleWebShare}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
@@ -126,69 +119,66 @@ Find it on Goodreads: ${goodreadsUrl}
                 <Share className="h-4 w-4" />
                 Share
               </Button>
+            ) : (
+              <Button
+                onClick={handleCopyToClipboard}
+                disabled={copying}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white flex items-center justify-center gap-2"
+              >
+                <Copy className="h-4 w-4" />
+                {copying ? "Copying..." : "Copy to Share"}
+              </Button>
             )}
+          </div>
 
-            {/* Copy to Clipboard */}
-            <Button
-              onClick={handleCopyToClipboard}
-              disabled={copying}
-              className="w-full bg-slate-600 hover:bg-slate-700 text-white flex items-center justify-center gap-2"
-            >
-              <Copy className="h-4 w-4" />
-              {copying ? "Copying..." : "Copy to Clipboard"}
-            </Button>
-
-            {/* Email */}
-            <Button
-              onClick={handleEmailShare}
-              className="w-full bg-green-600 hover:bg-green-700 text-white flex items-center justify-center gap-2"
-            >
-              <Mail className="h-4 w-4" />
-              Share via Email
-            </Button>
-
-            {/* SMS */}
-            <Button
-              onClick={handleSMSShare}
-              className="w-full bg-blue-500 hover:bg-blue-600 text-white flex items-center justify-center gap-2"
-            >
-              <MessageCircle className="h-4 w-4" />
-              Share via Text Message
-            </Button>
-
-            {/* Instagram */}
-            <Button
-              onClick={handleInstagramShare}
-              className="w-full bg-pink-500 hover:bg-pink-600 text-white flex items-center justify-center gap-2"
-            >
-              <Share className="h-4 w-4" />
-              Share to Instagram
-            </Button>
-
-            {/* Twitter */}
+          {/* Secondary Actions */}
+          <div className="grid grid-cols-2 gap-2 mb-4">
             <Button
               onClick={handleTwitterShare}
-              className="w-full bg-sky-500 hover:bg-sky-600 text-white flex items-center justify-center gap-2"
+              className="bg-sky-500 hover:bg-sky-600 text-white flex items-center justify-center gap-1 text-sm"
             >
-              <ExternalLink className="h-4 w-4" />
-              Share on Twitter
+              <ExternalLink className="h-3 w-3" />
+              Twitter
             </Button>
-
-            {/* Goodreads Link */}
             <Button
               onClick={() => window.open(goodreadsLink, '_blank')}
-              className="w-full bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-2"
+              className="bg-amber-600 hover:bg-amber-700 text-white flex items-center justify-center gap-1 text-sm"
             >
-              <ExternalLink className="h-4 w-4" />
-              View on Goodreads
+              <ExternalLink className="h-3 w-3" />
+              Goodreads
             </Button>
           </div>
 
-          <div className="mt-6 pt-4 border-t border-slate-200">
-            <p className="text-xs text-slate-500 mb-2">Preview:</p>
-            <div className="bg-slate-50 p-3 rounded-lg text-sm text-slate-700 max-h-32 overflow-y-auto">
-              {shareText}
+          {/* More Options (Collapsible) */}
+          <div className="border-t border-slate-200 pt-3">
+            <div className="grid grid-cols-2 gap-2">
+              <Button
+                onClick={handleEmailShare}
+                className="bg-slate-500 hover:bg-slate-600 text-white flex items-center justify-center gap-1 text-sm py-2"
+              >
+                <Mail className="h-3 w-3" />
+                Email
+              </Button>
+              <Button
+                onClick={handleSMSShare}
+                className="bg-slate-500 hover:bg-slate-600 text-white flex items-center justify-center gap-1 text-sm py-2"
+              >
+                <MessageCircle className="h-3 w-3" />
+                Text
+              </Button>
             </div>
+          </div>
+
+          <div className="mt-4 pt-3 border-t border-slate-200">
+            <details className="group">
+              <summary className="text-xs text-slate-500 cursor-pointer hover:text-slate-700 flex items-center gap-1">
+                <span>Preview share text</span>
+                <span className="group-open:rotate-90 transition-transform">▶</span>
+              </summary>
+              <div className="mt-2 bg-slate-50 p-2 rounded text-xs text-slate-600 max-h-24 overflow-y-auto">
+                {shareText}
+              </div>
+            </details>
           </div>
         </div>
       </Card>

@@ -127,7 +127,7 @@ export default function EditBookModal({
                 type="button"
                 onClick={onClose}
                 disabled={loading}
-                className="flex-1 bg-slate-200 hover:bg-slate-300 text-slate-800 border border-slate-300"
+                className="flex-1 bg-slate-200 hover:bg-slate-300 text-white-800 border border-slate-300"
               >
                 Cancel
               </Button>

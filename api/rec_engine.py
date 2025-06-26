@@ -226,14 +226,18 @@ def generate_book_synopsis(book_name: str, author_name: str, source: str = "hist
                 f"Generate a compelling 1-2 sentence synopsis for '{book_name}' by {author_name} "
                 "that I can share with friends to recommend this book I've read. "
                 "Make it enthusiastic and personal, as if I'm recommending it because I loved it. "
-                "Focus on what makes it engaging without major spoilers."
+                "Focus on what makes it engaging without major spoilers. "
+                "Do NOT include the book title, author name, or any hashtags in your response. "
+                "Only provide the synopsis description."
             )
         else:  # future reads
             prompt = (
                 f"Generate an intriguing 1-2 sentence synopsis for '{book_name}' by {author_name} "
                 "that explains why this book is on my reading list. "
                 "Make it sound appealing and highlight what makes this book worth reading. "
-                "Write it as if I'm excited to read it and want others to be interested too."
+                "Write it as if I'm excited to read it and want others to be interested too. "
+                "Do NOT include the book title, author name, or any hashtags in your response. "
+                "Only provide the synopsis description."
             )
 
         # Call OpenAI API for synopsis generation
@@ -242,7 +246,7 @@ def generate_book_synopsis(book_name: str, author_name: str, source: str = "hist
             messages=[
                 {
                     "role": "system", 
-                    "content": "You are a book enthusiast who writes compelling, concise book descriptions for social media sharing. Keep responses under 50 words."
+                    "content": "You are a book enthusiast who writes compelling, concise book descriptions for social media sharing. Keep responses under 50 words. Never include book titles, author names, or hashtags in your response - only provide the synopsis description."
                 },
                 {"role": "user", "content": prompt}
             ],

@@ -201,4 +201,68 @@ def build_prompt_from_data(entries: list, to_read: list) -> str:
     )
     
     return prompt  # Return the complete formatted prompt for OpenAI API
+
+def generate_book_synopsis(book_name: str, author_name: str, source: str = "history") -> str:
+    """
+    Generate a book synopsis for sharing using OpenAI API.
+    
+    Args:
+        book_name (str): Title of the book
+        author_name (str): Author of the book
+        source (str): Either "history" (read) or "future" (to-read)
+        
+    Returns:
+        str: A concise synopsis suitable for social sharing
+        
+    Example:
+        >>> synopsis = generate_book_synopsis("1984", "George Orwell", "history")
+        >>> print(synopsis)
+        "A chilling dystopian masterpiece that explores surveillance and freedom."
+    """
+    try:
+        # Create different prompts based on whether book was read or is to-be-read
+        if source == "history":
+            prompt = (
+                f"Generate a compelling 1-2 sentence synopsis for '{book_name}' by {author_name} "
+                "that I can share with friends to recommend this book I've read. "
+                "Make it enthusiastic and personal, as if I'm recommending it because I loved it. "
+                "Focus on what makes it engaging without major spoilers."
+            )
+        else:  # future reads
+            prompt = (
+                f"Generate an intriguing 1-2 sentence synopsis for '{book_name}' by {author_name} "
+                "that explains why this book is on my reading list. "
+                "Make it sound appealing and highlight what makes this book worth reading. "
+                "Write it as if I'm excited to read it and want others to be interested too."
+            )
+
+        # Call OpenAI API for synopsis generation
+        response = client.chat.completions.create(
+            model='gpt-3.5-turbo',
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are a book enthusiast who writes compelling, concise book descriptions for social media sharing. Keep responses under 50 words."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=100  # Keep it short for sharing
+        )
+        
+        synopsis = response.choices[0].message.content.strip()
+        
+        # Remove quotes if the AI added them
+        if synopsis.startswith('"') and synopsis.endswith('"'):
+            synopsis = synopsis[1:-1]
+            
+        return synopsis
+        
+    except Exception as e:
+        print(f"❌ Error generating synopsis: {str(e)}")
+        # Fallback synopsis if API fails
+        if source == "history":
+            return f"A great read by {author_name}. Highly recommend checking it out!"
+        else:
+            return f"Excited to read this book by {author_name}. Looks like it's going to be amazing!"
     

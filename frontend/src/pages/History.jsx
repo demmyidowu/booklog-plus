@@ -274,6 +274,7 @@ export default function History() {
         book={selectedBook}
         isOpen={showShareModal}
         onClose={closeModals}
+        source="history"
       />
 
       {/* Edit Modal */}

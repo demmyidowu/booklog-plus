@@ -648,6 +648,7 @@ export default function FutureReads() {
                 book={selectedBookForModal}
                 isOpen={showShareModal}
                 onClose={closeShareEditModals}
+                source="future"
             />
 
             {/* Edit Modal */}

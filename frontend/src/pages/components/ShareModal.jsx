@@ -5,11 +5,13 @@ import { X, Copy, Share, Mail, MessageCircle, ExternalLink } from "lucide-react"
 import Card from "./Card"
 import Button from "./Button"
 import { toast } from "react-hot-toast"
+import { getApiUrl } from "../../config"
 
-export default function ShareModal({ book, onClose, isOpen }) {
+export default function ShareModal({ book, onClose, isOpen, source = "history" }) {
   const [copying, setCopying] = useState(false)
   const [shareText, setShareText] = useState("")
   const [goodreadsLink, setGoodreadsLink] = useState("")
+  const [loadingSynopsis, setLoadingSynopsis] = useState(false)
 
   // Generate share content when modal opens
   useEffect(() => {
@@ -19,24 +21,72 @@ export default function ShareModal({ book, onClose, isOpen }) {
   }, [isOpen, book])
 
   const generateShareContent = async () => {
+    setLoadingSynopsis(true)
+    
     // Create Goodreads search link
     const searchQuery = encodeURIComponent(book.book_name)
     const goodreadsUrl = `https://www.goodreads.com/search?q=${searchQuery}`
     setGoodreadsLink(goodreadsUrl)
 
-    // Generate simple synopsis text (placeholder - could be enhanced with API)
-    const synopsis = `A great read by ${book.author_name}. Check it out!`
-    
-    // Create shareable text
-    const text = `📚 "${book.book_name}" by ${book.author_name}
+    try {
+      // Call OpenAI API to generate synopsis
+      const response = await fetch(getApiUrl('generate-synopsis'), {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          book_name: book.book_name,
+          author_name: book.author_name,
+          source: source
+        })
+      })
+
+      let synopsis = ""
+      if (response.ok) {
+        const data = await response.json()
+        synopsis = data.synopsis
+      } else {
+        // Fallback synopsis if API fails
+        synopsis = source === "history" 
+          ? `A great read by ${book.author_name}. Highly recommend checking it out!`
+          : `Excited to read this book by ${book.author_name}. Looks like it's going to be amazing!`
+      }
+      
+      // Create shareable text with AI-generated synopsis
+      const emoji = source === "history" ? "📚" : "📖"
+      const actionText = source === "history" ? "Just finished reading" : "Can't wait to read"
+      
+      const text = `${emoji} ${actionText} "${book.book_name}" by ${book.author_name}
 
 ${synopsis}
 
 Find it on Goodreads: ${goodreadsUrl}
 
 #BookRecommendation #Reading`
-    
-    setShareText(text)
+      
+      setShareText(text)
+    } catch (error) {
+      console.error('Failed to generate synopsis:', error)
+      
+      // Fallback content on error
+      const fallbackSynopsis = source === "history" 
+        ? `A great read by ${book.author_name}. Check it out!`
+        : `This book by ${book.author_name} is on my reading list. Looks amazing!`
+      
+      const emoji = source === "history" ? "📚" : "📖"
+      const text = `${emoji} "${book.book_name}" by ${book.author_name}
+
+${fallbackSynopsis}
+
+Find it on Goodreads: ${goodreadsUrl}
+
+#BookRecommendation #Reading`
+      
+      setShareText(text)
+    } finally {
+      setLoadingSynopsis(false)
+    }
   }
 
   const handleCopyToClipboard = async () => {
@@ -105,7 +155,13 @@ Find it on Goodreads: ${goodreadsUrl}
 
           <div className="mb-4">
             <h4 className="font-medium text-slate-800 mb-1">{book.book_name}</h4>
-            <p className="text-sm text-slate-600 mb-3">by {book.author_name}</p>
+            <p className="text-sm text-slate-600 mb-2">by {book.author_name}</p>
+            {loadingSynopsis && (
+              <div className="flex items-center gap-2 text-xs text-slate-500">
+                <div className="animate-spin h-3 w-3 border border-slate-300 border-t-blue-500 rounded-full"></div>
+                <span>Generating synopsis...</span>
+              </div>
+            )}
           </div>
 
           {/* Primary Actions */}

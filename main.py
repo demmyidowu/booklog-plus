@@ -14,7 +14,7 @@ Endpoints:
 
 import json
 import os
-from api.rec_engine import get_recommendations
+from api.rec_engine import get_recommendations, generate_book_synopsis
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from core.logic import save_book_entry, load_book_entries, delete_book_entry, save_to_read_entry, load_to_read_list, delete_to_read_entry, update_book_entry, update_to_read_entry
@@ -477,6 +477,47 @@ def update_to_read():
         
     except Exception as e:
         print("❌ Unexpected error in update_to_read:", str(e))
+        return jsonify({"message": str(e)}), 500
+
+
+@app.route("/generate-synopsis", methods=["POST"])
+def generate_synopsis():
+    """
+    Generate a book synopsis for sharing using OpenAI API.
+    
+    Expects a JSON payload with:
+    {
+        "book_name": "string",
+        "author_name": "string",
+        "source": "history" | "future"
+    }
+    
+    Returns:
+        JSON response with synopsis or error details
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+            
+        book_name = data.get("book_name")
+        author_name = data.get("author_name")
+        source = data.get("source", "history")  # Default to history if not specified
+        
+        if not book_name or not author_name:
+            return jsonify({"message": "Missing book_name or author_name"}), 400
+            
+        if source not in ["history", "future"]:
+            return jsonify({"message": "Source must be 'history' or 'future'"}), 400
+        
+        # Generate synopsis using the rec_engine
+        synopsis = generate_book_synopsis(book_name, author_name, source)
+        
+        return jsonify({"synopsis": synopsis}), 200
+        
+    except Exception as e:
+        print("❌ Unexpected error in generate_synopsis:", str(e))
         return jsonify({"message": str(e)}), 500
     
 

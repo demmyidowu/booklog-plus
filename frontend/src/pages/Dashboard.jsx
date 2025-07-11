@@ -15,6 +15,8 @@ import SignInPage from "./SignInPage.jsx"
 import { supabase } from "../lib/supabase"
 // API configuration
 import { getApiUrl } from "../config"
+// Quiz hook
+import { useQuiz } from "../hooks/useQuiz"
 
 // Collection of inspirational reading quotes to display on dashboard
 // These quotes rotate to provide motivation and celebrate reading culture
@@ -75,6 +77,7 @@ const READING_QUOTES = [
 
 export default function Dashboard() {
   const user = useUser()
+  const { quizCompleted, showQuizModal, loading: quizLoading } = useQuiz()
   const [ready, setReady] = useState(false)
   const [stats, setStats] = useState({
     totalBooks: 0,
@@ -219,6 +222,31 @@ export default function Dashboard() {
           </div>
         </Card>
       </div>
+
+      {/* Quiz Prompt Card - Show for new users who haven't completed quiz and have no books */}
+      {!quizLoading && !quizCompleted && stats.totalBooks === 0 && (
+        <Card className="border-blue-200 bg-gradient-to-br from-blue-50 to-purple-50">
+          <div className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center">
+                <BookOpen className="h-8 w-8 text-blue-600" />
+              </div>
+              <div className="flex-1">
+                <h3 className="text-xl font-bold text-slate-800 mb-2">Discover Your Perfect Books!</h3>
+                <p className="text-slate-600 mb-4">
+                  Take our 2-minute Reading Personality Quiz to get personalized book recommendations tailored just for you.
+                </p>
+                <Button 
+                  onClick={showQuizModal}
+                  className="bg-blue-600 hover:bg-blue-700 text-white"
+                >
+                  Take Quiz & Get Recommendations
+                </Button>
+              </div>
+            </div>
+          </div>
+        </Card>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
         <Card className="border-slate-200">

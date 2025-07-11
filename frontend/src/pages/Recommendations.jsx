@@ -5,7 +5,7 @@ import { useEffect, useState } from "react"
 // User authentication context
 import { useUser } from "./UserContext.jsx"
 // Lucide React icons for UI elements
-import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink, Plus, X, BookmarkPlus } from "lucide-react"
+import { Lightbulb, RefreshCw, Sparkles, BookOpen, ExternalLink, Plus, X, BookmarkPlus, Brain } from "lucide-react"
 // Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
 // Custom UI components
@@ -17,11 +17,14 @@ import Textarea from "./components/Textarea"
 import { getApiUrl } from "../config"
 // Toast notifications for user feedback
 import { toast } from "react-hot-toast"
+// Quiz hook
+import { useQuiz } from "../hooks/useQuiz"
 
 
 export default function Recommendations() {
   // Get current authenticated user from context
   const user = useUser()
+  const { quizCompleted, showQuizModal } = useQuiz()
   
   // Recommendations data and states
   const [recommendations, setRecommendations] = useState([])     // AI-generated book recommendations
@@ -29,6 +32,8 @@ export default function Recommendations() {
   const [isLoading, setIsLoading] = useState(false)             // Active loading state for API calls
   const [error, setError] = useState(null)                      // Error state for failed API calls
   const [hasRequested, setHasRequested] = useState(false)       // Track if user has requested recommendations
+  const [hasBooks, setHasBooks] = useState(false)               // Track if user has logged any books
+  const [quizRecommendations, setQuizRecommendations] = useState([]) // Quiz-based recommendations
   
   // Future reads integration states
   const [addingToFutureReads, setAddingToFutureReads] = useState(null)  // Track which book is being added
@@ -98,6 +103,7 @@ export default function Recommendations() {
   useEffect(() => {
     if (user) {
       setLoading(false)
+      checkUserBooksAndQuizRecommendations()
     }
 
     // Check if we should auto-fetch (coming from successful book log)
@@ -111,6 +117,40 @@ export default function Recommendations() {
 
     checkAutoFetch()
   }, [user, hasRequested])
+
+  // Check if user has books and load quiz recommendations if available
+  const checkUserBooksAndQuizRecommendations = async () => {
+    if (!user) return
+
+    try {
+      // Check if user has logged any books
+      const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
+      if (response.ok) {
+        const books = await response.json()
+        setHasBooks(books && books.length > 0)
+      }
+
+      // Check for quiz recommendations in localStorage
+      const storedQuizRecs = localStorage.getItem('quizRecommendations')
+      if (storedQuizRecs) {
+        try {
+          const { recommendations, timestamp } = JSON.parse(storedQuizRecs)
+          // Only use quiz recommendations if they're less than 24 hours old
+          const isRecent = Date.now() - timestamp < 24 * 60 * 60 * 1000
+          if (isRecent && recommendations) {
+            setQuizRecommendations(recommendations)
+          } else {
+            localStorage.removeItem('quizRecommendations')
+          }
+        } catch (e) {
+          console.error('Error parsing quiz recommendations:', e)
+          localStorage.removeItem('quizRecommendations')
+        }
+      }
+    } catch (error) {
+      console.error('Error checking user books:', error)
+    }
+  }
 
   // Handle quick-log modal
   const openQuickLog = (book) => {
@@ -250,34 +290,146 @@ export default function Recommendations() {
           </p>
         </div>
 
-        {!hasRequested || (!error && recommendations.length === 0) ? (
+        {/* Show quiz recommendations if user has completed quiz but has no books */}
+        {quizRecommendations.length > 0 && !hasBooks ? (
+          <div className="max-w-4xl mx-auto">
+            <div className="text-center mb-6">
+              <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                <Brain className="h-8 w-8 text-blue-600" />
+              </div>
+              <h3 className="text-lg font-semibold text-slate-800 mb-2">Picked for You Based on Your Quiz</h3>
+              <p className="text-slate-600 text-sm">
+                Here are personalized recommendations based on your reading personality
+              </p>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              {quizRecommendations.map((book, index) => {
+                const isProcessed = processedBooks.has(book.title)
+                const isAddingThis = addingToFutureReads === book.title
+
+                return (
+                  <Card key={index} className="border-slate-200">
+                    <div className="p-6">
+                      <div className="flex flex-col gap-4">
+                        <div className="w-12 h-16 bg-gradient-to-br from-blue-400 to-purple-600 rounded-lg flex items-center justify-center">
+                          <BookOpen className="h-5 w-5 text-white" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-medium text-slate-800 text-lg mb-1">{book.title}</h4>
+                          <p className="text-sm text-slate-600 mb-2">by {book.author}</p>
+                          <p className="text-slate-700 text-sm leading-relaxed mb-4">{book.description}</p>
+
+                          <div className="space-y-3">
+                            <Button
+                              onClick={() => openQuickLog(book)}
+                              disabled={isProcessed || isAddingThis}
+                              className={`w-full text-sm ${isProcessed
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-purple-600 hover:bg-purple-700'
+                                } text-white`}
+                            >
+                              <Plus className="h-4 w-4 mr-2" />
+                              {isProcessed ? "Already processed" : "I've read this!"}
+                            </Button>
+
+                            <Button
+                              onClick={() => handleAddToFutureReads(book)}
+                              disabled={isProcessed || isAddingThis}
+                              className={`w-full text-sm ${isProcessed
+                                ? 'bg-gray-400 cursor-not-allowed'
+                                : 'bg-green-600 hover:bg-green-700'
+                                } text-white`}
+                            >
+                              {isAddingThis ? (
+                                <>
+                                  <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                                  Adding...
+                                </>
+                              ) : (
+                                <>
+                                  <BookmarkPlus className="h-4 w-4 mr-2" />
+                                  {isProcessed ? "Already processed" : "Add to Future Reads"}
+                                </>
+                              )}
+                            </Button>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+            <div className="text-center mt-8">
+              <Button
+                onClick={fetchRecommendations}
+                disabled={isLoading}
+                className="bg-blue-600 hover:bg-blue-700 text-white"
+              >
+                {isLoading ? (
+                  <>
+                    <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                    Getting More Recommendations...
+                  </>
+                ) : (
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Get More Recommendations
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+        ) : !hasRequested || (!error && recommendations.length === 0) ? (
           <div className="max-w-md mx-auto">
             <Card className="border-slate-200 text-center">
               <div className="p-8">
-                <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <Lightbulb className="h-8 w-8 text-purple-600" />
-                </div>
-                <h3 className="text-lg font-semibold text-slate-800 mb-2">Ready for your next read?</h3>
-                <p className="text-slate-600 mb-6 text-sm">
-                  Our AI will analyze your reading history and suggest three perfect books for you
-                </p>
-                <Button
-                  onClick={fetchRecommendations}
-                  disabled={isLoading}
-                  className="bg-purple-600 hover:bg-purple-700 text-white"
-                >
-                  {isLoading ? (
-                    <>
-                      <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
-                      Finding your perfect books...
-                    </>
-                  ) : (
-                    <>
-                      <Sparkles className="h-4 w-4 mr-2" />
-                      Get Recommendations
-                    </>
-                  )}
-                </Button>
+                {/* Show quiz prompt if user hasn't completed quiz and has no books */}
+                {!quizCompleted && !hasBooks ? (
+                  <>
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Brain className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Get Your First Recommendations!</h3>
+                    <p className="text-slate-600 mb-6 text-sm">
+                      Take our Reading Personality Quiz to get personalized book recommendations tailored just for you
+                    </p>
+                    <Button
+                      onClick={showQuizModal}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Take Quiz
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <div className="w-16 h-16 bg-gradient-to-br from-purple-100 to-blue-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Lightbulb className="h-8 w-8 text-purple-600" />
+                    </div>
+                    <h3 className="text-lg font-semibold text-slate-800 mb-2">Ready for your next read?</h3>
+                    <p className="text-slate-600 mb-6 text-sm">
+                      Our AI will analyze your reading history and suggest three perfect books for you
+                    </p>
+                    <Button
+                      onClick={fetchRecommendations}
+                      disabled={isLoading}
+                      className="bg-purple-600 hover:bg-purple-700 text-white"
+                    >
+                      {isLoading ? (
+                        <>
+                          <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                          Finding your perfect books...
+                        </>
+                      ) : (
+                        <>
+                          <Sparkles className="h-4 w-4 mr-2" />
+                          Get Recommendations
+                        </>
+                      )}
+                    </Button>
+                  </>
+                )}
               </div>
             </Card>
           </div>

@@ -32,7 +32,24 @@ export function useFirstTimeUser() {
 
             const books = await response.json()
             const hasBooks = books && books.length > 0
-            const isFirstTimeUser = !hasBooks
+            
+            // Also check if user has completed the quiz
+            let hasCompletedQuiz = false
+            try {
+                const { data: profile } = await supabase
+                    .table('User_Profile')
+                    .select('quiz_completed')
+                    .eq('user_id', user.id)
+                    .single()
+                
+                hasCompletedQuiz = profile?.quiz_completed || false
+            } catch (err) {
+                // Profile doesn't exist yet, that's okay
+                hasCompletedQuiz = false
+            }
+            
+            // User is first time if they have no books AND haven't completed quiz
+            const isFirstTimeUser = !hasBooks && !hasCompletedQuiz
 
             // Also check localStorage to avoid showing welcome multiple times
             const hasSeenWelcome = localStorage.getItem(`welcome_shown_${user.id}`) === 'true'

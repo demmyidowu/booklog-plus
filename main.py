@@ -14,7 +14,7 @@ Endpoints:
 
 import json
 import os
-from api.rec_engine import get_recommendations, generate_book_synopsis
+from api.rec_engine import get_recommendations, generate_book_synopsis, get_quiz_recommendations
 from flask import Flask, request, jsonify, send_from_directory
 from flask_cors import CORS
 from core.logic import save_book_entry, load_book_entries, delete_book_entry, save_to_read_entry, load_to_read_list, delete_to_read_entry, update_book_entry, update_to_read_entry
@@ -518,6 +518,122 @@ def generate_synopsis():
         
     except Exception as e:
         print("❌ Unexpected error in generate_synopsis:", str(e))
+        return jsonify({"message": str(e)}), 500
+
+@app.route("/quiz-recommendations", methods=["POST"])
+def quiz_recommendations():
+    """
+    Get personalized book recommendations based on quiz responses and save quiz data to user profile.
+    
+    Expects a JSON payload with:
+    {
+        "user_id": "string",
+        "quiz_responses": {
+            "genres": ["fiction", "self-help", "sci-fi"],
+            "reading_time": "30-60 minutes/day",
+            "content_preference": "light and fun",
+            "motivation": "entertainment and relaxation",
+            "favorite_movies": ["action", "romance"],
+            "learning_interests": ["psychology", "business"]
+        }
+    }
+    
+    Returns:
+        JSON response with recommendations or error details
+    """
+    try:
+        data = request.get_json()
+        
+        if not data:
+            return jsonify({"message": "Request body required"}), 400
+            
+        user_id = data.get("user_id")
+        quiz_responses = data.get("quiz_responses")
+        
+        if not user_id:
+            return jsonify({"message": "Missing user_id"}), 400
+            
+        if not quiz_responses:
+            return jsonify({"message": "Missing quiz_responses"}), 400
+        
+        # Validate quiz responses structure
+        required_fields = ['genres', 'reading_time', 'content_preference', 'motivation', 'favorite_movies', 'learning_interests']
+        for field in required_fields:
+            if field not in quiz_responses:
+                return jsonify({"message": f"Missing required field: {field}"}), 400
+        
+        # Import supabase client for database operations
+        from data.db import supabase
+        
+        # Save quiz responses to User_Profile table
+        try:
+            # Extract individual fields from quiz responses
+            genres = quiz_responses.get('genres', [])
+            reading_time = quiz_responses.get('reading_time', '')
+            content_preference = quiz_responses.get('content_preference', '')
+            motivation = quiz_responses.get('motivation', '')
+            favorite_movies = quiz_responses.get('favorite_movies', [])
+            learning_interests = quiz_responses.get('learning_interests', [])
+            
+            # Map content preference to reading goal
+            goal_mapping = {
+                'light': 'entertainment',
+                'balanced': 'balanced learning',
+                'deep': 'intellectual growth'
+            }
+            reading_goal = goal_mapping.get(content_preference, 'general reading')
+            
+            # Map reading time to reading pace
+            pace_mapping = {
+                '15-min': 'casual',
+                '30-min': 'moderate', 
+                '1-hour': 'dedicated',
+                '2-hours': 'intensive'
+            }
+            reading_pace = pace_mapping.get(reading_time, 'moderate')
+            
+            # Determine experience level based on responses
+            experience_level = 'beginner'  # Default for new users taking quiz
+            
+            # Update user profile with quiz data
+            profile_data = {
+                'quiz_completed': True,
+                'quiz_responses': quiz_responses,
+                'reading_interests': learning_interests,
+                'reading_goal': reading_goal,
+                'reading_pace': reading_pace,
+                'experience_level': experience_level,
+                'quiz_completed_at': 'now()',
+                'preferred_genres': genres
+            }
+            
+            # Upsert user profile (insert if not exists, update if exists)
+            result = supabase.table('User_Profile').upsert(
+                {**profile_data, 'user_id': user_id},
+                on_conflict='user_id'
+            ).execute()
+            
+            print("✅ Quiz responses saved to User_Profile")
+            
+        except Exception as e:
+            print(f"❌ Error saving quiz responses: {str(e)}")
+            # Continue with recommendations even if profile save fails
+        
+        # Generate AI-powered recommendations using OpenAI API
+        try:
+            # Call recommendation engine with quiz responses
+            recs_str = get_quiz_recommendations(quiz_responses)
+            recs = json.loads(recs_str)
+            
+            return jsonify({"recommendations": recs}), 200
+            
+        except json.JSONDecodeError:
+            return jsonify({"error": "Invalid recommendations format from AI"}), 500
+        except ValueError as e:
+            return jsonify({"error": str(e)}), 500
+            
+    except Exception as e:
+        print("❌ Unexpected error in quiz_recommendations:", str(e))
         return jsonify({"message": str(e)}), 500
     
 

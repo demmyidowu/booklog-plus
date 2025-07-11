@@ -1,5 +1,5 @@
 import { useState } from "react"
-import { BookOpen, ArrowRight, Sparkles, TrendingUp, X, BookmarkPlus } from "lucide-react"
+import { BookOpen, ArrowRight, Sparkles, TrendingUp, X, BookmarkPlus, Brain } from "lucide-react"
 import Button from "./Button"
 import Card from "./Card"
 
@@ -13,6 +13,13 @@ export default function WelcomeModal({ isOpen, onClose, onGetStarted, userName }
             description: `Hi ${userName || 'there'}! 👋 Let's get you started on your reading journey.`,
             detail: "BookLog+ helps you track books you've read and discover amazing new ones through AI-powered recommendations.",
             buttonText: "Let's begin!"
+        },
+        {
+            icon: Brain,
+            title: "Discover Your Perfect Books",
+            description: "Take our 2-minute Reading Personality Quiz to get personalized book recommendations.",
+            detail: "We'll ask about your interests, reading habits, and preferences to find books you'll absolutely love.",
+            buttonText: "Sounds Great!"
         },
         {
             icon: Sparkles,

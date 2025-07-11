@@ -3,7 +3,7 @@
 // React hooks for component lifecycle and state management
 import { useEffect, useState } from "react"
 // Lucide React icons for UI elements
-import { User, LogOut } from "lucide-react"
+import { User, LogOut, Brain, Calendar, Target, BookOpen } from "lucide-react"
 // Supabase client for authentication and profile management
 import { supabase } from "../lib/supabase"
 // Custom UI components
@@ -18,10 +18,13 @@ import { useUser } from "./UserContext"
 import { trackEvent, trackError } from "../lib/analytics"
 // API configuration for backend communication
 import { getApiUrl } from "../config"
+// Quiz hook
+import { useQuiz } from "../hooks/useQuiz"
 
 export default function Profile({ onSignOut }) {
   // Get current authenticated user from context
   const user = useUser()
+  const { quizCompleted, userProfile, retakeQuiz } = useQuiz()
   
   // Profile form state - initialize from user metadata if available
   const [firstName, setFirstName] = useState(user?.user_metadata?.name || "")    // User's display name
@@ -225,6 +228,87 @@ export default function Profile({ onSignOut }) {
                     </Button>
                   </div>
                 </form>
+              </div>
+            </Card>
+
+            {/* Reading Preferences Section */}
+            <Card className="border-slate-200">
+              <div className="p-6">
+                <div className="flex items-center gap-2 mb-4">
+                  <Brain className="h-5 w-5 text-slate-600" />
+                  <h3 className="text-slate-800 font-semibold">Reading Preferences</h3>
+                </div>
+                <p className="text-slate-600 text-sm mb-6">Your reading personality and preferences</p>
+
+                {quizCompleted && userProfile ? (
+                  <div className="space-y-4">
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+                      <div>
+                        <p className="font-medium text-slate-800 mb-1">Preferred Genres</p>
+                        <p className="text-slate-600">
+                          {userProfile.preferred_genres?.join(", ") || "Not specified"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800 mb-1">Reading Goal</p>
+                        <p className="text-slate-600 capitalize">
+                          {userProfile.reading_goal || "Not specified"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800 mb-1">Reading Pace</p>
+                        <p className="text-slate-600 capitalize">
+                          {userProfile.reading_pace || "Not specified"}
+                        </p>
+                      </div>
+                      <div>
+                        <p className="font-medium text-slate-800 mb-1">Experience Level</p>
+                        <p className="text-slate-600 capitalize">
+                          {userProfile.experience_level || "Not specified"}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    {userProfile.reading_interests && userProfile.reading_interests.length > 0 && (
+                      <div>
+                        <p className="font-medium text-slate-800 mb-1">Learning Interests</p>
+                        <p className="text-slate-600">
+                          {userProfile.reading_interests.join(", ")}
+                        </p>
+                      </div>
+                    )}
+
+                    <div className="pt-4 border-t border-slate-200">
+                      <Button
+                        onClick={retakeQuiz}
+                        className="bg-blue-600 hover:bg-blue-700 text-white"
+                      >
+                        <Brain className="h-4 w-4 mr-2" />
+                        Retake Quiz
+                      </Button>
+                      <p className="text-slate-500 text-xs mt-2">
+                        Quiz completed on {userProfile.quiz_completed_at ? new Date(userProfile.quiz_completed_at).toLocaleDateString() : 'Unknown'}
+                      </p>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-center py-8">
+                    <div className="w-16 h-16 bg-gradient-to-br from-blue-100 to-purple-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                      <Brain className="h-8 w-8 text-blue-600" />
+                    </div>
+                    <h4 className="text-slate-800 font-medium mb-2">Take the Reading Quiz</h4>
+                    <p className="text-slate-600 text-sm mb-4">
+                      Get personalized book recommendations by taking our 2-minute quiz
+                    </p>
+                    <Button
+                      onClick={retakeQuiz}
+                      className="bg-blue-600 hover:bg-blue-700 text-white"
+                    >
+                      <Brain className="h-4 w-4 mr-2" />
+                      Take Quiz
+                    </Button>
+                  </div>
+                )}
               </div>
             </Card>
           </div>

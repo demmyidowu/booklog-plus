@@ -202,6 +202,157 @@ def build_prompt_from_data(entries: list, to_read: list) -> str:
     
     return prompt  # Return the complete formatted prompt for OpenAI API
 
+def get_quiz_recommendations(quiz_responses: dict, debug: bool = False, retry_count: int = 0) -> str:
+    """
+    Generate personalized book recommendations based on quiz responses.
+    
+    Args:
+        quiz_responses (dict): Dictionary containing quiz responses with keys:
+            - genres: List of preferred genres
+            - reading_time: Available reading time per day
+            - content_preference: Light/balanced/deep content preference
+            - motivation: Main motivation for reading
+            - favorite_movies: List of favorite movie genres
+            - learning_interests: List of learning interests
+        debug (bool, optional): If True, prints the prompt sent to OpenAI. Defaults to False.
+        retry_count (int, optional): Number of retries attempted. Defaults to 0.
+        
+    Returns:
+        str: A formatted string containing three book recommendations with explanations
+        
+    Raises:
+        ValueError: If unable to get valid recommendations after retries
+    """
+    # Prevent infinite retry loops by limiting attempts
+    if retry_count >= 3:
+        raise ValueError("Failed to get valid quiz recommendations after multiple attempts")
+    
+    # Build the AI prompt using quiz responses
+    prompt = build_quiz_prompt(quiz_responses)
+    
+    # Print prompt for debugging if requested
+    if debug:
+        print("📤 Quiz Prompt Sent to OpenAI:")
+        print(prompt)
+    
+    # Call OpenAI API to generate book recommendations
+    try:
+        output = client.chat.completions.create(
+            model='gpt-3.5-turbo',
+            messages=[
+                {
+                    "role": "system", 
+                    "content": "You are an expert librarian who specializes in matching readers with their perfect books based on their personality and preferences. You understand how reading habits, motivations, and entertainment preferences translate into book recommendations."
+                },
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.7,
+            max_tokens=400
+        )
+        
+        # Extract the AI-generated content from the API response
+        finalOutput = output.choices[0].message.content
+        
+        # Validate and clean the JSON response from OpenAI
+        try:
+            # Parse the JSON response from the AI
+            recs = json.loads(finalOutput)
+            
+            # Ensure response is a list with exactly 3 recommendations
+            if not isinstance(recs, list) or len(recs) != 3:
+                # Retry if format is incorrect
+                return get_quiz_recommendations(quiz_responses, debug, retry_count + 1)
+            
+            # Validate each individual recommendation object
+            for rec in recs:
+                # Ensure all required fields are present in each recommendation
+                if not all(key in rec for key in ["title", "author", "description"]):
+                    # Retry if any recommendation is missing required fields
+                    return get_quiz_recommendations(quiz_responses, debug, retry_count + 1)
+                
+                # Clean up invalid Goodreads links to prevent broken links in frontend
+                if "link" in rec and not validate_goodreads_link(rec["link"]):
+                    del rec["link"]  # Remove invalid link rather than keeping it
+            
+            # Return the validated and cleaned recommendations as JSON string
+            return json.dumps(recs)
+        except json.JSONDecodeError:
+            # Retry if AI response is not valid JSON
+            return get_quiz_recommendations(quiz_responses, debug, retry_count + 1)
+            
+    except Exception as e:
+        print(f"❌ Error generating quiz recommendations: {str(e)}")
+        # Retry if API call fails
+        return get_quiz_recommendations(quiz_responses, debug, retry_count + 1)
+
+def build_quiz_prompt(responses: dict) -> str:
+    """
+    Build a natural language prompt for quiz-based recommendations.
+    
+    Args:
+        responses (dict): Quiz responses containing preferences and interests
+        
+    Returns:
+        str: Formatted prompt string for the OpenAI API
+    """
+    # Extract and format quiz responses
+    genres = ", ".join(responses.get('genres', []))
+    reading_time = responses.get('reading_time', 'Not specified')
+    content_preference = responses.get('content_preference', 'Not specified')
+    motivation = responses.get('motivation', 'Not specified')
+    favorite_movies = ", ".join(responses.get('favorite_movies', []))
+    learning_interests = ", ".join(responses.get('learning_interests', []))
+    
+    # Map content preference to specific guidance
+    content_guidance = {
+        'light': 'easy-to-read, entertaining books that provide escapism and fun',
+        'balanced': 'books that offer both entertainment and learning opportunities',
+        'deep': 'intellectually challenging books that offer profound insights and complex ideas'
+    }
+    
+    # Map motivation to specific book characteristics
+    motivation_guidance = {
+        'entertainment': 'engaging plots, compelling characters, and immersive storytelling',
+        'learning': 'educational content, skill development, and knowledge expansion',
+        'escape': 'transporting narratives that provide adventure and fantasy',
+        'inspiration': 'uplifting stories, motivational content, and personal growth themes'
+    }
+    
+    content_desc = content_guidance.get(content_preference, 'varied content based on mood')
+    motivation_desc = motivation_guidance.get(motivation, 'general reading satisfaction')
+    
+    prompt = f"""Based on this reading personality profile, recommend EXACTLY 3 books that would be perfect matches:
+
+READING PREFERENCES:
+- Interested genres: {genres}
+- Available reading time: {reading_time}
+- Content preference: {content_preference} ({content_desc})
+- Primary motivation: {motivation} ({motivation_desc})
+- Favorite movie genres: {favorite_movies}
+- Learning interests: {learning_interests}
+
+Consider these factors when making recommendations:
+1. Match the preferred genres while potentially introducing complementary ones
+2. Consider the reading time availability (shorter books for limited time, longer series for dedicated readers)
+3. Align with content preference (light/balanced/deep) and motivation
+4. Use movie preferences to infer storytelling preferences (pacing, themes, character types)
+5. Incorporate learning interests where relevant
+
+You MUST format your response as a valid JSON array containing EXACTLY 3 objects. Each object MUST follow this structure:
+[
+  {{
+    "title": "Book Title",
+    "author": "Author Name",
+    "description": "A personalized 2-3 sentence explanation of why this book perfectly matches their reading personality and preferences"
+  }},
+  {{...}},
+  {{...}}
+]
+
+Return ONLY the JSON array with no additional text. The response MUST be valid JSON and MUST contain exactly 3 recommendations. Focus on books that truly match their personality profile rather than just popular titles."""
+    
+    return prompt
+
 def generate_book_synopsis(book_name: str, author_name: str, source: str = "history") -> str:
     """
     Generate a book synopsis for sharing using OpenAI API.

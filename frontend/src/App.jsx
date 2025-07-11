@@ -15,7 +15,9 @@ import { supabase } from "./lib/supabase"
 import { trackPageView } from "./lib/analytics"
 import AnalyticsNotice from "./components/AnalyticsNotice"
 import WelcomeModal from "./pages/components/WelcomeModal"
+import ReadingQuiz from "./pages/components/ReadingQuiz"
 import { useFirstTimeUser } from "./hooks/useFirstTimeUser"
+import { useQuiz } from "./hooks/useQuiz"
 import { Toaster } from "react-hot-toast"
 import "./index.css"
 
@@ -39,6 +41,7 @@ function App() {
 
   const user = useUser()
   const { isFirstTime, showWelcome, markWelcomeShown, skipWelcome } = useFirstTimeUser()
+  const { showQuiz, handleQuizComplete, hideQuizModal, showQuizModal } = useQuiz()
 
   // 🔗 Navigation handler that updates both state and URL
   const handleNavigation = (page) => {
@@ -53,7 +56,21 @@ function App() {
   // 🎯 Handle welcome flow completion
   const handleWelcomeGetStarted = () => {
     markWelcomeShown()
-    handleNavigation('log-book')
+    // Show quiz after welcome is complete
+    showQuizModal()
+  }
+
+  // 🧠 Handle quiz completion
+  const handleQuizCompleted = async (quizResponses) => {
+    try {
+      await handleQuizComplete(quizResponses)
+      // Navigate to recommendations page to show quiz results
+      handleNavigation('recommendations')
+    } catch (error) {
+      console.error('Error handling quiz completion:', error)
+      // Still navigate to dashboard if there's an error
+      handleNavigation('dashboard')
+    }
   }
 
   // 🔗 Read URL on page load and set appropriate page
@@ -180,6 +197,14 @@ function App() {
         isOpen={showWelcome}
         onClose={skipWelcome}
         onGetStarted={handleWelcomeGetStarted}
+        userName={user?.user_metadata?.name}
+      />
+
+      {/* Reading Quiz Modal */}
+      <ReadingQuiz
+        isOpen={showQuiz}
+        onClose={hideQuizModal}
+        onComplete={handleQuizCompleted}
         userName={user?.user_metadata?.name}
       />
 

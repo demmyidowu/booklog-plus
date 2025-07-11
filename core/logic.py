@@ -48,11 +48,6 @@ def save_book_entry(entry: dict, user_id: str) -> None:
         response = supabase.table("book_logs").insert(entry).execute()
         print("📡 Supabase response:", response)  # Debug log
         
-        # Check for database errors in the response
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Ensure data was actually inserted (response should contain the new record)
         if not response.data:
             raise Exception("❌ Insert failed: No data returned from Supabase")
@@ -97,11 +92,6 @@ def save_to_read_entry(entry: dict, user_id: str) -> None:
         # Insert the to-read entry into the 'to_read_logs' table in Supabase
         response = supabase.table("to_read_logs").insert(entry).execute()
 
-        # Check for database errors in the response
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Ensure data was actually inserted successfully
         if not response.data:
             raise Exception("❌ Insert failed: No data returned from Supabase")
@@ -201,11 +191,6 @@ def delete_book_entry(book_name: str, author_name: str, user_id: str) -> bool:
         response = supabase.table("book_logs").delete().eq("book_name", book_name).eq("author_name", author_name).eq("user_id", user_id).execute()
         print("📡 Supabase delete response:", response)  # Debug log
         
-        # Check for database errors during deletion
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Check if any rows were actually deleted
         # response.data contains the deleted records, empty array means no matches found
         if response.data and len(response.data) > 0:
@@ -246,11 +231,6 @@ def delete_to_read_entry(entry: dict, user_id: str) -> bool:
         response = supabase.table("to_read_logs").delete().eq("book_name", entry["book_name"]).eq("author_name", entry["author_name"]).eq("user_id", user_id).execute()
         print("📡 Supabase delete response:", response)  # Debug log
         
-        # Check for database errors during deletion operation
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Verify that the deletion actually affected some rows
         # Empty response.data means no matching records were found to delete
         if response.data and len(response.data) > 0:
@@ -299,11 +279,6 @@ def update_book_entry(original_book_name: str, original_author_name: str, book_n
         
         print("📡 Supabase update response:", response)  # Debug log
         
-        # Check for database errors during update
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Check if any rows were actually updated
         if response.data and len(response.data) > 0:
             print("✅ Book entry updated successfully:", response.data)  # Debug log
@@ -350,11 +325,6 @@ def update_to_read_entry(original_book_name: str, original_author_name: str, boo
         
         print("📡 Supabase update response:", response)  # Debug log
         
-        # Check for database errors during update operation
-        if hasattr(response, 'error') and response.error:
-            print("❌ Supabase error:", response.error)  # Debug log
-            raise Exception(f"Supabase error: {response.error}")
-            
         # Verify that the update actually affected some rows
         if response.data and len(response.data) > 0:
             print("✅ To-read entry updated successfully:", response.data)  # Debug log
@@ -383,19 +353,110 @@ def get_user_name(user_id: str) -> str | None:
         ...     print(f"Welcome back, {name}!")
     """
     # Query the 'User_Profile' table to get the user's display name
-    # Only select the 'name' field to minimize data transfer
-    response = supabase.table("User_Profile").select("name").eq("user_id", user_id).execute()
+    # Only select the 'first_name' field to minimize data transfer
+    response = supabase.table("User_Profile").select("first_name").eq("user_id", user_id).execute()
     try:
         # Check if query returned user profile data
-        if response.data:
-            return response.data  # Return the user's name data
-        elif response.error:
-            print(f"❌ Supabase error in get_user_name: {response.error.message}")
-            return None  # Return None on database error
+        if response.data and len(response.data) > 0:
+            return response.data[0].get("first_name")  # Return the user's name
         else:
             return None  # Return None if no user profile found
     except Exception as e:
         print(f"❌ Exception in get_user_name: {str(e)}")
         return None  # Return None on any exception to prevent crashes
+
+def get_user_profile(user_id: str) -> dict | None:
+    """
+    Retrieve the complete user profile from Supabase including quiz data.
+    
+    Args:
+        user_id (str): Unique identifier for the user
+        
+    Returns:
+        dict | None: User profile data if found, None if not found or on error
+        
+    Example:
+        >>> profile = get_user_profile("user123")
+        >>> if profile and profile.get("quiz_completed"):
+        ...     print("User has completed the quiz")
+    """
+    try:
+        # Query the 'User_Profile' table to get all user profile data
+        response = supabase.table("User_Profile").select("*").eq("user_id", user_id).execute()
+        
+        # Check if query returned user profile data
+        if response.data and len(response.data) > 0:
+            return response.data[0]  # Return the complete user profile
+        else:
+            return None  # Return None if no user profile found
+    except Exception as e:
+        print(f"❌ Exception in get_user_profile: {str(e)}")
+        return None  # Return None on any exception to prevent crashes
+
+def save_user_profile(user_id: str, profile_data: dict) -> bool:
+    """
+    Save or update user profile data in Supabase including quiz responses.
+    
+    Args:
+        user_id (str): Unique identifier for the user
+        profile_data (dict): Profile data to save/update
+        
+    Returns:
+        bool: True if save was successful, False otherwise
+        
+    Example:
+        >>> profile_data = {
+        ...     "first_name": "John",
+        ...     "quiz_completed": True,
+        ...     "preferred_genres": ["fiction", "mystery"]
+        ... }
+        >>> success = save_user_profile("user123", profile_data)
+    """
+    try:
+        # Add user_id to profile data
+        profile_data["user_id"] = user_id
+        
+        # Upsert the profile data (insert if not exists, update if exists)
+        response = supabase.table("User_Profile").upsert(profile_data, on_conflict="user_id").execute()
+        
+        # Check if data was saved
+        if response.data and len(response.data) > 0:
+            print("✅ User profile saved successfully")
+            return True
+        else:
+            print("⚠️ No data returned from profile save")
+            return False
+            
+    except Exception as e:
+        print(f"❌ Error in save_user_profile: {str(e)}")
+        return False
+
+def check_quiz_completion(user_id: str) -> bool:
+    """
+    Check if a user has completed the reading personality quiz.
+    
+    Args:
+        user_id (str): Unique identifier for the user
+        
+    Returns:
+        bool: True if quiz is completed, False otherwise
+        
+    Example:
+        >>> has_completed = check_quiz_completion("user123")
+        >>> if not has_completed:
+        ...     print("User should take the quiz")
+    """
+    try:
+        # Query for quiz completion status
+        response = supabase.table("User_Profile").select("quiz_completed").eq("user_id", user_id).execute()
+        
+        # Check if query returned data
+        if response.data and len(response.data) > 0:
+            return response.data[0].get("quiz_completed", False)
+        else:
+            return False  # No profile found, quiz not completed
+    except Exception as e:
+        print(f"❌ Exception in check_quiz_completion: {str(e)}")
+        return False  # Return False on error
     
                 

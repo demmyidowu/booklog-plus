@@ -80,7 +80,7 @@ export function useQuiz() {
 
             const result = await response.json()
             
-            // Update local state
+            // Update local state immediately
             setQuizCompleted(true)
             setShowQuiz(false)
             
@@ -108,20 +108,31 @@ export function useQuiz() {
     }
 
     const showQuizModal = () => {
+        console.log('📝 showQuizModal called')
         setShowQuiz(true)
         trackEvent('Quiz', 'Quiz Modal Opened')
     }
 
     const hideQuizModal = () => {
+        console.log('❌ hideQuizModal called')
         setShowQuiz(false)
         trackEvent('Quiz', 'Quiz Modal Closed')
     }
 
     const retakeQuiz = () => {
+        console.log('🔄 retakeQuiz called')
+        // Reset quiz state
         setQuizCompleted(false)
         setShowQuiz(true)
+        
+        // Clear stored recommendations so new ones will be generated
+        localStorage.removeItem('quizRecommendations')
+        
         trackEvent('Quiz', 'Quiz Retaken')
     }
+
+    // Debug logging
+    console.log('🎯 useQuiz state:', { quizCompleted, showQuiz, loading, userProfile: !!userProfile })
 
     return {
         quizCompleted,

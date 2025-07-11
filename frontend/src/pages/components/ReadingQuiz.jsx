@@ -192,14 +192,14 @@ export default function ReadingQuiz({ isOpen, onClose, onComplete, userName }) {
           {/* Close button */}
           <button
             onClick={onClose}
-            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600"
+            className="absolute top-4 right-4 text-slate-400 hover:text-slate-600 z-10"
             disabled={loading}
           >
             <X className="h-5 w-5" />
           </button>
 
           {/* Progress bar */}
-          <div className="mb-6">
+          <div className="mb-6 pr-12">
             <div className="flex items-center justify-between mb-2">
               <span className="text-sm text-slate-600">Question {currentStep + 1} of {questions.length}</span>
               <span className="text-sm text-slate-600">{Math.round(progress)}%</span>

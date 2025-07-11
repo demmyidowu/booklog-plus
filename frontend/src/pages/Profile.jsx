@@ -24,7 +24,7 @@ import { useQuiz } from "../hooks/useQuiz"
 export default function Profile({ onSignOut }) {
   // Get current authenticated user from context
   const user = useUser()
-  const { quizCompleted, userProfile, retakeQuiz } = useQuiz()
+  const { quizCompleted, userProfile, showQuizModal } = useQuiz()
   
   // Profile form state - initialize from user metadata if available
   const [firstName, setFirstName] = useState(user?.user_metadata?.name || "")    // User's display name
@@ -280,7 +280,7 @@ export default function Profile({ onSignOut }) {
 
                     <div className="pt-4 border-t border-slate-200">
                       <Button
-                        onClick={retakeQuiz}
+                        onClick={showQuizModal}
                         className="bg-blue-600 hover:bg-blue-700 text-white"
                       >
                         <Brain className="h-4 w-4 mr-2" />
@@ -301,7 +301,7 @@ export default function Profile({ onSignOut }) {
                       Get personalized book recommendations by taking our 2-minute quiz
                     </p>
                     <Button
-                      onClick={retakeQuiz}
+                      onClick={showQuizModal}
                       className="bg-blue-600 hover:bg-blue-700 text-white"
                     >
                       <Brain className="h-4 w-4 mr-2" />

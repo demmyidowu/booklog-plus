@@ -143,7 +143,7 @@ function App() {
       case "future-reads":
         return <FutureReads />
       case "profile":
-        return <Profile />
+        return <Profile onSignOut={handleSignOut} showQuizModal={showQuizModal} />
       case "signup":
         return <SignUpPage onNavigateToSignIn={() => handleNavigation("signin")} />
       case "signin":

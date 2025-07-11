@@ -18,13 +18,16 @@ import { toast } from "react-hot-toast"
 // Quiz hook
 import { useQuiz } from "../hooks/useQuiz"
 // Cached API hooks
-import { useUserBooks, useRecommendations, useAddBook, useAddToRead } from "../hooks/useApi"
+import { useUserBooks, useRecommendations, useAddBook, useAddToRead, QUERY_KEYS } from "../hooks/useApi"
+// React Query for cache invalidation
+import { useQueryClient } from '@tanstack/react-query'
 
 
 export default function Recommendations() {
   // Get current authenticated user from context
   const user = useUser()
   const { quizCompleted, showQuizModal } = useQuiz()
+  const queryClient = useQueryClient()
   
   // Cached data hooks
   const { data: books = [], isLoading: booksLoading } = useUserBooks()
@@ -53,6 +56,12 @@ export default function Recommendations() {
     
     setHasRequested(true)
     try {
+      // Remove the cached data completely to force fresh recommendations
+      queryClient.removeQueries({ 
+        queryKey: QUERY_KEYS.recommendations(user.id) 
+      })
+      
+      // Then fetch fresh data
       await fetchRecommendations()
       trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {

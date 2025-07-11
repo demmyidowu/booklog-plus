@@ -21,10 +21,10 @@ import { getApiUrl } from "../config"
 // Quiz hook
 import { useQuiz } from "../hooks/useQuiz"
 
-export default function Profile({ onSignOut }) {
+export default function Profile({ onSignOut, showQuizModal }) {
   // Get current authenticated user from context
   const user = useUser()
-  const { quizCompleted, userProfile, showQuizModal } = useQuiz()
+  const { quizCompleted, userProfile } = useQuiz()
   
   // Profile form state - initialize from user metadata if available
   const [firstName, setFirstName] = useState(user?.user_metadata?.name || "")    // User's display name

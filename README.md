@@ -4,16 +4,40 @@ BookLog+ is a modern, full-stack reading companion application that helps users 
 
 ## 🌟 Features
 
-- 📚 **Book Tracking**: Log books with title, author, and personal reflections
-- 📋 **To-Read List Management**: Add and manage books you plan to read
-- 🤖 **Smart Recommendations**: AI-powered book suggestions based on reading history and to-read preferences
-- 📊 **Reading Dashboard**: Visual insights into reading habits and progress
-- 📖 **Reading History**: Track and review all previously read books
-- 🔐 **User Authentication**: Secure login and profile management via Supabase
-- 📱 **Responsive Design**: Beautiful, modern UI that works on all devices
-- 🔄 **Real-time Updates**: Instant data synchronization across devices
-- 🌐 **Goodreads Integration**: Optional direct links to recommended books on Goodreads
-- 📈 **Google Analytics**: Privacy-focused analytics with user consent
+### 📚 **Core Reading Features**
+- **Book Tracking**: Log books with title, author, and personal reflections
+- **To-Read List Management**: Add and manage books you plan to read with Goodreads integration
+- **Reading History**: Track and review all previously read books with search functionality
+- **Reading Dashboard**: Visual insights including reading streaks, monthly progress, and book counts
+
+### 🧠 **AI-Powered Personalization**
+- **Reading Personality Quiz**: Interactive 6-question quiz to discover your reading personality
+- **Smart Recommendations**: AI-powered book suggestions based on reading history and quiz responses
+- **Personality-Based Matching**: Get recommendations tailored to your reading pace, genres, and interests
+- **Dynamic Recommendation Engine**: Fresh suggestions powered by OpenAI's advanced language models
+
+### 🚀 **Modern User Experience**
+- **Comprehensive Caching**: Lightning-fast performance with React Query caching system
+- **Optimistic Updates**: Instant UI feedback with automatic rollback on errors
+- **Loading States**: Beautiful loading animations and progress indicators
+- **Real-time Synchronization**: Changes reflect instantly across all pages
+- **Responsive Design**: Beautiful, modern UI that works on all devices
+
+### 🔐 **Security & Authentication**
+- **User Authentication**: Secure login and profile management via Supabase
+- **Privacy-First**: User data isolation and secure API endpoints
+- **Profile Management**: Update personal information and retake personality quiz
+
+### 📊 **Analytics & Insights**
+- **Reading Statistics**: Track daily streaks, monthly progress, and total books read
+- **Google Analytics**: Privacy-focused analytics with user consent
+- **User Behavior Tracking**: Understand reading patterns and preferences
+
+### 🛠️ **Technical Excellence**
+- **Progressive Web App**: Modern web standards with offline-ready architecture
+- **Comprehensive Error Handling**: Graceful failure management with user feedback
+- **Share Functionality**: Share book recommendations and reading lists
+- **Edit Capabilities**: Update book information and reflections seamlessly
 
 ## 🚀 Getting Started
 
@@ -96,12 +120,20 @@ booklog-plus/
 │   │   │   ├── Recommendations.jsx # AI book recommendations
 │   │   │   ├── Profile.jsx    # User profile management
 │   │   │   ├── SignInPage.jsx # Authentication
-│   │   │   └── SignUpPage.jsx # User registration
+│   │   │   ├── SignUpPage.jsx # User registration
+│   │   │   └── components/    # Page-specific components
+│   │   │       ├── ReadingQuiz.jsx    # Interactive personality quiz
+│   │   │       ├── WelcomeModal.jsx   # User onboarding
+│   │   │       ├── ShareModal.jsx     # Share book functionality
+│   │   │       └── EditBookModal.jsx  # Edit book information
 │   │   ├── components/        # Reusable UI components
 │   │   ├── lib/              # Utility functions
 │   │   │   ├── supabase.js   # Supabase client configuration
 │   │   │   └── analytics.js  # Google Analytics integration
 │   │   └── hooks/            # Custom React hooks
+│   │       ├── useApi.js     # React Query API hooks
+│   │       ├── useQuiz.js    # Quiz state management
+│   │       └── useFirstTimeUser.js # Onboarding logic
 │   └── package.json          # Frontend dependencies
 ├── main.py                    # Flask application entry point
 ├── core/                      # Core business logic
@@ -213,6 +245,37 @@ Get personalized book recommendations based on reading history and to-read list
   ```
 - **Status Codes**: 200 (Success), 400 (Missing user_id), 500 (AI Error)
 
+##### `POST /quiz-recommendations`
+Process personality quiz responses and generate personalized recommendations
+- **Request Body**:
+  ```json
+  {
+    "user_id": "string",
+    "quiz_responses": {
+      "genres": ["fantasy", "sci-fi"],
+      "reading_pace": "moderate",
+      "content_preference": "fiction",
+      "motivation": "escapism",
+      "movie_preferences": ["action", "drama"],
+      "learning_interests": ["technology", "history"]
+    }
+  }
+  ```
+- **Response**: 
+  ```json
+  {
+    "recommendations": [
+      {
+        "title": "Book Title",
+        "author": "Author Name",
+        "description": "Personality-based recommendation explanation"
+      }
+    ],
+    "message": "Quiz completed successfully"
+  }
+  ```
+- **Status Codes**: 200 (Success), 400 (Invalid quiz data), 500 (AI Error)
+
 ### Static Routes
 The application serves the React frontend on all main routes:
 - `/` - Dashboard (landing page)
@@ -243,9 +306,20 @@ Manages user's to-read list
 - `author_name` (string): Author name
 
 #### `User_Profile`
-User profile information
+User profile and reading personality information
 - `user_id` (string): User identifier
-- `name` (string): User's display name
+- `first_name` (string): User's display name
+- `quiz_completed` (boolean): Whether user has completed the personality quiz
+- `quiz_completed_at` (timestamp): When the quiz was completed
+- `quiz_responses` (jsonb): Complete quiz response data
+- `preferred_genres` (array): User's preferred book genres from quiz
+- `reading_pace` (string): User's reading speed preference
+- `content_preferences` (string): Fiction vs non-fiction preference
+- `reading_motivation` (string): Why the user likes to read
+- `favorite_movies` (array): Movie preferences for recommendation matching
+- `reading_interests` (array): Learning topics of interest
+- `experience_level` (string): Reading experience level
+- `reading_goal` (string): User's reading goals and aspirations
 
 ## 🧪 Testing
 
@@ -296,6 +370,10 @@ docker run -p 5000:5000 \
 - **React 18.2.0**: UI library for building user interfaces
 - **Vite 6.3.5**: Fast build tool and development server
 - **TailwindCSS 3.4.17**: Utility-first CSS framework
+
+#### State Management & Caching
+- **@tanstack/react-query 5.82.0**: Powerful data synchronization and caching
+- **@tanstack/react-query-devtools**: Development tools for debugging queries
 
 #### Authentication & Database
 - **@supabase/supabase-js 2.49.8**: Supabase client for authentication and database
@@ -384,15 +462,86 @@ Created by Demmy Idowu, built with 💡
 
 ---
 
+## 🆕 Recent Updates & Improvements
+
+### ✨ **Major Features Added**
+- **🧠 Reading Personality Quiz**: Complete 6-question interactive quiz system
+- **🚀 React Query Caching**: Comprehensive caching for lightning-fast performance
+- **🎯 Personality-Based Recommendations**: AI suggestions tailored to quiz responses
+- **📱 Enhanced User Onboarding**: Welcome flow with quiz integration
+- **⚡ Optimistic UI Updates**: Instant feedback with automatic error handling
+
+### 🔧 **Technical Improvements**
+- **State Management Overhaul**: Centralized state with React Query
+- **Performance Optimization**: Background caching with smart invalidation
+- **Loading States**: Beautiful animations for all user interactions
+- **Error Handling**: Comprehensive error management with user feedback
+- **Database Schema Enhancement**: Extended User_Profile with quiz data
+
+### 🐛 **Bug Fixes & Refinements**
+- **Quiz Modal Integration**: Fixed state management across components
+- **Supabase Client Updates**: Modern error handling patterns
+- **Cache Invalidation**: Proper data synchronization across pages
+- **UI Polish**: Improved spacing, animations, and user feedback
+
+## 🔮 **Architecture Highlights**
+
+### **Modern Caching Strategy**
+```javascript
+// Intelligent cache management
+staleTime: 10 * 60 * 1000,  // 10 minutes for most data
+gcTime: 30 * 60 * 1000,     // 30 minutes background cache
+enabled: false,             // Manual fetching for recommendations
+```
+
+### **Optimistic Updates Pattern**
+```javascript
+// Instant UI feedback with rollback on error
+const mutation = useMutation({
+  mutationFn: updateData,
+  onSuccess: () => queryClient.invalidateQueries(),
+  onError: () => /* automatic rollback */
+})
+```
+
+### **Centralized API Management**
+```javascript
+// Consistent patterns across all operations
+export const QUERY_KEYS = {
+  userBooks: (userId) => ['books', userId],
+  userProfile: (userId) => ['profile', userId],
+  recommendations: (userId) => ['recommendations', userId],
+}
+```
+
 ## 🔭 Future Plans
 
-- **Enhanced Analytics**: Advanced reading insights and statistics
-- **Social Features**: Share reading lists and recommendations with friends
-- **Book Categories**: Organize books by genres and custom tags
-- **Community Reviews**: User-generated reviews and ratings
-- **Reading Goals**: Set and track annual reading targets
-- **Mobile App**: Native iOS and Android applications
-- **Offline Support**: Read and sync data offline
-- **Book API Integration**: Rich metadata from external book databases
-- **Reading Progress**: Track progress through individual books
-- **Export Features**: Export reading data to various formats
+### **Enhanced Personalization**
+- **Advanced Quiz Analytics**: Deeper personality insights and reading patterns
+- **Dynamic Recommendation Learning**: AI that learns from user feedback
+- **Reading Mood Detection**: Recommendations based on current reading mood
+- **Seasonal Suggestions**: Time-based and holiday-themed recommendations
+
+### **Social & Community Features**
+- **Reading Clubs**: Create and join virtual book clubs
+- **Friend Recommendations**: Share and discover books through friends
+- **Reading Challenges**: Community-driven reading goals and competitions
+- **Social Proof**: See what friends are reading and their recommendations
+
+### **Advanced Analytics & Insights**
+- **Reading Pattern Analysis**: Deep insights into reading habits and preferences
+- **Goal Tracking & Achievements**: Gamified reading experience with badges
+- **Progress Visualization**: Beautiful charts and reading journey maps
+- **Export & Integration**: Connect with Goodreads, LibraryThing, and other platforms
+
+### **Mobile & Accessibility**
+- **Progressive Web App**: Full offline support and mobile installation
+- **Native Mobile Apps**: iOS and Android applications
+- **Accessibility Excellence**: WCAG 2.1 AA compliance
+- **Multiple Language Support**: Internationalization for global users
+
+### **Content & Discovery**
+- **Book API Integration**: Rich metadata from Google Books, OpenLibrary
+- **ISBN Scanning**: Add books by scanning barcodes
+- **Reading Progress Tracking**: Chapter-by-chapter progress monitoring
+- **Book Reviews & Ratings**: User-generated content and community reviews

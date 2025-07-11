@@ -13,12 +13,12 @@ import Card from "./components/Card"
 import Button from "./components/Button"
 import Input from "./components/Input"
 import Textarea from "./components/Textarea"
-// API configuration for backend communication
-import { getApiUrl } from "../config"
 // Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 // Quiz hook
 import { useQuiz } from "../hooks/useQuiz"
+// Cached API hooks
+import { useUserBooks, useRecommendations, useAddBook, useAddToRead } from "../hooks/useApi"
 
 
 export default function Recommendations() {
@@ -26,13 +26,14 @@ export default function Recommendations() {
   const user = useUser()
   const { quizCompleted, showQuizModal } = useQuiz()
   
-  // Recommendations data and states
-  const [recommendations, setRecommendations] = useState([])     // AI-generated book recommendations
-  const [loading, setLoading] = useState(false)                 // Legacy loading state (kept for compatibility)
-  const [isLoading, setIsLoading] = useState(false)             // Active loading state for API calls
-  const [error, setError] = useState(null)                      // Error state for failed API calls
+  // Cached data hooks
+  const { data: books = [], isLoading: booksLoading } = useUserBooks()
+  const { data: recommendations = [], isLoading: recommendationsLoading, error, refetch: fetchRecommendations } = useRecommendations()
+  const addBookMutation = useAddBook()
+  const addToReadMutation = useAddToRead()
+  
+  // Local state
   const [hasRequested, setHasRequested] = useState(false)       // Track if user has requested recommendations
-  const [hasBooks, setHasBooks] = useState(false)               // Track if user has logged any books
   const [quizRecommendations, setQuizRecommendations] = useState([]) // Quiz-based recommendations
   
   // Future reads integration states
@@ -46,111 +47,57 @@ export default function Recommendations() {
   const [quickLogLoading, setQuickLogLoading] = useState(false) // Quick log submission loading state
 
 
-  // Fetch AI-powered book recommendations from backend
-  const fetchRecommendations = async () => {
-    // Ensure user is authenticated before making API call
+  // Handle recommendation fetching with caching
+  const handleFetchRecommendations = async () => {
     if (!user) return
     
-    // Set loading states and clear previous errors
-    setIsLoading(true)
-    setError(null)
-    setHasRequested(true)  // Track that user has attempted to get recommendations
-    
+    setHasRequested(true)
     try {
-      // Call backend recommendation API with user ID
-      const res = await fetch(getApiUrl(`recommend?user_id=${user.id}`))
-      
-      // Check for HTTP errors
-      if (!res.ok) {
-        const error = new Error('Failed to fetch recommendations')
-        error.status = res.status  // Attach status code for error tracking
-        throw error
-      }
-      
-      // Parse JSON response from AI recommendation engine
-      const data = await res.json()
-
-      // Validate that we received the expected format (exactly 3 recommendations)
-      // This ensures the AI API returned valid data
-      if (!data.recommendations || !Array.isArray(data.recommendations) || data.recommendations.length !== 3) {
-        const error = new Error('Invalid recommendations format')
-        error.data = data  // Attach response data for debugging
-        throw error
-      }
-
-      // Update state with validated recommendations
-      setRecommendations(data.recommendations)
-      
-      // Track successful recommendation fetch for analytics
+      await fetchRecommendations()
       trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {
       console.error("Error fetching recommendations:", err)
-      
-      // Track error for analytics and debugging
       trackError(err, {
         userId: user?.id,
         hasRequested,
-        status: err.status,
-        data: err.data
       }, 'Recommendations')
-      setError(err.message)
-    } finally {
-      setIsLoading(false)
-      setLoading(false)
     }
   }
 
   useEffect(() => {
-    if (user) {
-      setLoading(false)
-      checkUserBooksAndQuizRecommendations()
-    }
-
     // Check if we should auto-fetch (coming from successful book log)
     const checkAutoFetch = () => {
       const shouldAutoFetch = localStorage.getItem('autoFetchRecommendations') === 'true'
       if (shouldAutoFetch) {
         localStorage.removeItem('autoFetchRecommendations')
-        fetchRecommendations()
+        handleFetchRecommendations()
       }
     }
 
     checkAutoFetch()
   }, [user, hasRequested])
 
-  // Check if user has books and load quiz recommendations if available
-  const checkUserBooksAndQuizRecommendations = async () => {
-    if (!user) return
-
-    try {
-      // Check if user has logged any books
-      const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
-      if (response.ok) {
-        const books = await response.json()
-        setHasBooks(books && books.length > 0)
-      }
-
-      // Check for quiz recommendations in localStorage
-      const storedQuizRecs = localStorage.getItem('quizRecommendations')
-      if (storedQuizRecs) {
-        try {
-          const { recommendations, timestamp } = JSON.parse(storedQuizRecs)
-          // Only use quiz recommendations if they're less than 24 hours old
-          const isRecent = Date.now() - timestamp < 24 * 60 * 60 * 1000
-          if (isRecent && recommendations) {
-            setQuizRecommendations(recommendations)
-          } else {
-            localStorage.removeItem('quizRecommendations')
-          }
-        } catch (e) {
-          console.error('Error parsing quiz recommendations:', e)
+  // Check for quiz recommendations in localStorage
+  useEffect(() => {
+    const storedQuizRecs = localStorage.getItem('quizRecommendations')
+    if (storedQuizRecs) {
+      try {
+        const { recommendations, timestamp } = JSON.parse(storedQuizRecs)
+        // Only use quiz recommendations if they're less than 24 hours old
+        const isRecent = Date.now() - timestamp < 24 * 60 * 60 * 1000
+        if (isRecent && recommendations) {
+          setQuizRecommendations(recommendations)
+        } else {
           localStorage.removeItem('quizRecommendations')
         }
+      } catch (e) {
+        console.error('Error parsing quiz recommendations:', e)
+        localStorage.removeItem('quizRecommendations')
       }
-    } catch (error) {
-      console.error('Error checking user books:', error)
     }
-  }
+  }, [])
+
+  const hasBooks = books && books.length > 0
 
   // Handle quick-log modal
   const openQuickLog = (book) => {
@@ -172,26 +119,11 @@ export default function Recommendations() {
     setQuickLogLoading(true)
 
     try {
-      const response = await fetch(getApiUrl("add"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,
-          book_name: selectedBook.title,
-          author_name: selectedBook.author,
-          reflection: reflection,
-        }),
+      await addBookMutation.mutateAsync({
+        book_name: selectedBook.title,
+        author_name: selectedBook.author,
+        reflection: reflection,
       })
-
-      if (!response.ok) {
-        const error = new Error('Failed to save book')
-        error.status = response.status
-        error.statusText = response.statusText
-        throw error
-      }
-
-      const result = await response.json()
-      console.log("✅ Recommended book logged:", result)
 
       // Mark this book as processed
       setProcessedBooks(prev => new Set([...prev, selectedBook.title]))
@@ -212,8 +144,6 @@ export default function Recommendations() {
         userId: user?.id,
         book_name: selectedBook?.title,
         author_name: selectedBook?.author,
-        status: err.status,
-        statusText: err.statusText
       }, 'QuickLogRecommendedBook')
       toast.error('Failed to save book. Please try again.')
     } finally {
@@ -226,25 +156,10 @@ export default function Recommendations() {
     setAddingToFutureReads(book.title)
 
     try {
-      const response = await fetch(getApiUrl("to-read/add"), {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          user_id: user.id,
-          book_name: book.title,
-          author_name: book.author,
-        }),
+      await addToReadMutation.mutateAsync({
+        book_name: book.title,
+        author_name: book.author,
       })
-
-      if (!response.ok) {
-        const error = new Error('Failed to add book to future reads')
-        error.status = response.status
-        error.statusText = response.statusText
-        throw error
-      }
-
-      const result = await response.json()
-      console.log("✅ Book added to future reads:", result)
 
       // Mark this book as processed
       setProcessedBooks(prev => new Set([...prev, book.title]))
@@ -264,11 +179,9 @@ export default function Recommendations() {
         userId: user?.id,
         book_name: book.title,
         author_name: book.author,
-        status: err.status,
-        statusText: err.statusText
       }, 'AddToFutureReads')
 
-      if (err.status === 400 && err.message?.includes('already in your to-read list')) {
+      if (err.message?.includes('already in your to-read list')) {
         toast.error('Book is already in your Future Reads!')
       } else {
         toast.error('Failed to add book to Future Reads. Please try again.')
@@ -278,7 +191,7 @@ export default function Recommendations() {
     }
   }
 
-  if (loading) return <p className="p-6">Loading recommendations...</p>
+  if (booksLoading) return <p className="p-6">Loading recommendations...</p>
 
   return (
     <>
@@ -362,11 +275,11 @@ export default function Recommendations() {
             </div>
             <div className="text-center mt-8">
               <Button
-                onClick={fetchRecommendations}
-                disabled={isLoading}
+                onClick={handleFetchRecommendations}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? (
+                {recommendationsLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Getting More Recommendations...
@@ -412,11 +325,11 @@ export default function Recommendations() {
                       Our AI will analyze your reading history and suggest three perfect books for you
                     </p>
                     <Button
-                      onClick={fetchRecommendations}
-                      disabled={isLoading}
+                      onClick={handleFetchRecommendations}
+                      disabled={recommendationsLoading}
                       className="bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                      {isLoading ? (
+                      {recommendationsLoading ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                           Finding your perfect books...
@@ -438,8 +351,8 @@ export default function Recommendations() {
             <Card className="border-slate-200 text-center p-6">
               <p className="text-red-600 mb-4">Error: {error}</p>
               <Button
-                onClick={fetchRecommendations}
-                disabled={isLoading}
+                onClick={handleFetchRecommendations}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Try Again
@@ -524,11 +437,11 @@ export default function Recommendations() {
             </div>
             <div className="text-center mt-8">
               <Button
-                onClick={fetchRecommendations}
-                disabled={isLoading}
+                onClick={handleFetchRecommendations}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {isLoading ? (
+                {recommendationsLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Getting New Recommendations...

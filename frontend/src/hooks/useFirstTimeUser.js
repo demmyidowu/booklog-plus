@@ -37,7 +37,7 @@ export function useFirstTimeUser() {
             let hasCompletedQuiz = false
             try {
                 const { data: profile } = await supabase
-                    .table('User_Profile')
+                    .from('User_Profile')
                     .select('quiz_completed')
                     .eq('user_id', user.id)
                     .single()

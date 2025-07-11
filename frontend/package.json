@@ -13,6 +13,8 @@
   "dependencies": {
     "@analytics/google-analytics": "^1.1.0",
     "@supabase/supabase-js": "^2.49.8",
+    "@tanstack/react-query": "^5.82.0",
+    "@tanstack/react-query-devtools": "^5.82.0",
     "analytics": "^0.8.16",
     "dotenv": "^16.5.0",
     "lucide-react": "^0.511.0",

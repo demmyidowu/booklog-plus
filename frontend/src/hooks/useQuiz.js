@@ -1,54 +1,15 @@
 import { useState, useEffect } from 'react'
 import { useUser } from '../pages/UserContext'
-import { supabase } from '../lib/supabase'
 import { trackEvent } from '../lib/analytics'
-import { getApiUrl } from '../config'
+import { useUserProfile, useCompleteQuiz } from './useApi'
 
 export function useQuiz() {
     const user = useUser()
-    const [quizCompleted, setQuizCompleted] = useState(false)
     const [showQuiz, setShowQuiz] = useState(false)
-    const [loading, setLoading] = useState(true)
-    const [userProfile, setUserProfile] = useState(null)
+    const { data: userProfile, isLoading: loading } = useUserProfile()
+    const completeQuizMutation = useCompleteQuiz()
 
-    useEffect(() => {
-        if (!user) {
-            setLoading(false)
-            return
-        }
-
-        checkQuizStatus()
-    }, [user])
-
-    const checkQuizStatus = async () => {
-        try {
-            // Check if user has completed the quiz by looking at User_Profile
-            const { data, error } = await supabase
-                .table('User_Profile')
-                .select('quiz_completed, quiz_responses, reading_interests, reading_goal, reading_pace, experience_level, preferred_genres')
-                .eq('user_id', user.id)
-                .single()
-
-            if (error && error.code !== 'PGRST116') { // PGRST116 is "not found"
-                console.error('Error checking quiz status:', error)
-                setLoading(false)
-                return
-            }
-
-            if (data) {
-                setQuizCompleted(data.quiz_completed || false)
-                setUserProfile(data)
-            } else {
-                setQuizCompleted(false)
-                setUserProfile(null)
-            }
-
-        } catch (err) {
-            console.error('Error in checkQuizStatus:', err)
-        } finally {
-            setLoading(false)
-        }
-    }
+    const quizCompleted = userProfile?.quiz_completed || false
 
     const shouldShowQuiz = () => {
         if (!user || loading) return false
@@ -62,30 +23,10 @@ export function useQuiz() {
 
     const handleQuizComplete = async (quizResponses) => {
         try {
-            // Submit quiz responses to backend
-            const response = await fetch(getApiUrl('quiz-recommendations'), {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    quiz_responses: quizResponses
-                })
-            })
-
-            if (!response.ok) {
-                throw new Error('Failed to submit quiz responses')
-            }
-
-            const result = await response.json()
+            const result = await completeQuizMutation.mutateAsync(quizResponses)
             
             // Update local state immediately
-            setQuizCompleted(true)
             setShowQuiz(false)
-            
-            // Track completion
-            trackEvent('Quiz', 'Quiz Completed')
             
             // Store quiz-based recommendations in localStorage for immediate access
             if (result.recommendations) {
@@ -94,9 +35,6 @@ export function useQuiz() {
                     timestamp: Date.now()
                 }))
             }
-
-            // Refresh user profile data
-            await checkQuizStatus()
             
             return result
 
@@ -108,21 +46,17 @@ export function useQuiz() {
     }
 
     const showQuizModal = () => {
-        console.log('📝 showQuizModal called')
         setShowQuiz(true)
         trackEvent('Quiz', 'Quiz Modal Opened')
     }
 
     const hideQuizModal = () => {
-        console.log('❌ hideQuizModal called')
         setShowQuiz(false)
         trackEvent('Quiz', 'Quiz Modal Closed')
     }
 
     const retakeQuiz = () => {
-        console.log('🔄 retakeQuiz called')
-        // Reset quiz state
-        setQuizCompleted(false)
+        // Show quiz modal
         setShowQuiz(true)
         
         // Clear stored recommendations so new ones will be generated
@@ -130,9 +64,6 @@ export function useQuiz() {
         
         trackEvent('Quiz', 'Quiz Retaken')
     }
-
-    // Debug logging
-    console.log('🎯 useQuiz state:', { quizCompleted, showQuiz, loading, userProfile: !!userProfile })
 
     return {
         quizCompleted,

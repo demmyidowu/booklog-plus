@@ -1,7 +1,7 @@
 "use client"
 
 // React hooks for state management and lifecycle
-import { useState, useEffect } from "react"
+import { useState, useEffect, useMemo } from "react"
 // Lucide React icons for UI elements
 import { BookOpen, Target, TrendingUp, Calendar, Clock, Award } from "lucide-react"
 // Custom UI components
@@ -11,10 +11,8 @@ import Button from "./components/Button"
 // User authentication context
 import { useUser } from "./UserContext.jsx"
 import SignInPage from "./SignInPage.jsx"
-// Supabase client for database operations
-import { supabase } from "../lib/supabase"
-// API configuration
-import { getApiUrl } from "../config"
+// Cached API hooks
+import { useUserBooks } from "../hooks/useApi"
 // Quiz hook
 import { useQuiz } from "../hooks/useQuiz"
 
@@ -78,18 +76,57 @@ const READING_QUOTES = [
 export default function Dashboard() {
   const user = useUser()
   const { quizCompleted, showQuizModal, loading: quizLoading } = useQuiz()
+  const { data: books = [], isLoading: booksLoading, error: booksError } = useUserBooks()
   const [ready, setReady] = useState(false)
-  const [stats, setStats] = useState({
-    totalBooks: 0,
-    thisMonth: 0,
-    streak: 0,
-    recentBooks: []
-  })
-  const [loading, setLoading] = useState(true)
   const [quote, setQuote] = useState(() => {
     // Initialize with a random quote for each user session
     return READING_QUOTES[Math.floor(Math.random() * READING_QUOTES.length)]
   })
+
+  // Calculate stats from cached books data
+  const stats = useMemo(() => {
+    if (!books || books.length === 0) {
+      return {
+        totalBooks: 0,
+        thisMonth: 0,
+        streak: 0,
+        recentBooks: []
+      }
+    }
+
+    const now = new Date()
+    const thisMonth = books.filter(book => {
+      const bookDate = new Date(book.created_at)
+      return bookDate.getMonth() === now.getMonth() &&
+        bookDate.getFullYear() === now.getFullYear()
+    })
+
+    // Calculate reading streak (simplified version)
+    const sortedDates = [...new Set(books.map(book =>
+      new Date(book.created_at).toISOString().split('T')[0]
+    ))].sort()
+
+    let streak = 0
+    if (sortedDates.length > 0) {
+      const lastDate = new Date(sortedDates[sortedDates.length - 1])
+      const today = new Date()
+      const diffTime = Math.abs(today - lastDate)
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
+      streak = diffDays <= 1 ? sortedDates.length : 0
+    }
+
+    // Get recent books
+    const recentBooks = books
+      .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
+      .slice(0, 3)
+
+    return {
+      totalBooks: books.length,
+      thisMonth: thisMonth.length,
+      streak,
+      recentBooks
+    }
+  }, [books])
 
   useEffect(() => {
     // Rotate quotes randomly every 24 hours using user ID as seed
@@ -115,56 +152,6 @@ export default function Dashboard() {
 
   useEffect(() => {
     if (user !== undefined) setReady(true)
-    if (!user) return
-
-    async function fetchDashboardData() {
-      try {
-        // Fetch all books
-        const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
-        if (!response.ok) throw new Error('Failed to fetch books')
-        const books = await response.json()
-
-        // Calculate stats
-        const now = new Date()
-        const thisMonth = books.filter(book => {
-          const bookDate = new Date(book.created_at)
-          return bookDate.getMonth() === now.getMonth() &&
-            bookDate.getFullYear() === now.getFullYear()
-        })
-
-        // Calculate reading streak (simplified version)
-        const sortedDates = [...new Set(books.map(book =>
-          new Date(book.created_at).toISOString().split('T')[0]
-        ))].sort()
-
-        let streak = 0
-        if (sortedDates.length > 0) {
-          const lastDate = new Date(sortedDates[sortedDates.length - 1])
-          const today = new Date()
-          const diffTime = Math.abs(today - lastDate)
-          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24))
-          streak = diffDays <= 1 ? sortedDates.length : 0
-        }
-
-        // Get recent books
-        const recentBooks = books
-          .sort((a, b) => new Date(b.created_at) - new Date(a.created_at))
-          .slice(0, 3)
-
-        setStats({
-          totalBooks: books.length,
-          thisMonth: thisMonth.length,
-          streak,
-          recentBooks
-        })
-      } catch (err) {
-        console.error("Failed to fetch dashboard data:", err)
-      } finally {
-        setLoading(false)
-      }
-    }
-
-    fetchDashboardData()
   }, [user])
 
   if (!ready) return <p className="p-4">Loading...</p>
@@ -186,7 +173,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-sm text-slate-600">Total Books Read</p>
-                <p className="text-2xl font-bold text-slate-800">{loading ? "..." : stats.totalBooks}</p>
+                <p className="text-2xl font-bold text-slate-800">{booksLoading ? "..." : stats.totalBooks}</p>
               </div>
             </div>
           </div>
@@ -201,7 +188,7 @@ export default function Dashboard() {
               <div>
                 <p className="text-sm text-slate-600">Daily Logging Streak</p>
                 <p className="text-2xl font-bold text-slate-800">
-                  {loading ? "..." : `${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
+                  {booksLoading ? "..." : `${stats.streak} ${stats.streak === 1 ? 'day' : 'days'}`}
                 </p>
               </div>
             </div>
@@ -216,7 +203,7 @@ export default function Dashboard() {
               </div>
               <div>
                 <p className="text-sm text-slate-600">This Month</p>
-                <p className="text-2xl font-bold text-slate-800">{loading ? "..." : stats.thisMonth}</p>
+                <p className="text-2xl font-bold text-slate-800">{booksLoading ? "..." : stats.thisMonth}</p>
               </div>
             </div>
           </div>
@@ -252,7 +239,7 @@ export default function Dashboard() {
         <Card className="border-slate-200">
           <div className="p-6">
             <h3 className="text-lg font-semibold text-slate-800 mb-4">Recently Read</h3>
-            {loading ? (
+            {booksLoading ? (
               <p className="text-slate-600">Loading recent books...</p>
             ) : stats.recentBooks.length === 0 ? (
               <div className="text-center py-8">

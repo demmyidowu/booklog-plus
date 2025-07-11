@@ -57,7 +57,7 @@ export function useQuiz() {
 
     const retakeQuiz = () => {
         // Show quiz modal
-        setShowQuiz(true)
+        showQuizModal()
         
         // Clear stored recommendations so new ones will be generated
         localStorage.removeItem('quizRecommendations')

@@ -13,29 +13,30 @@ import ShareModal from "./components/ShareModal"
 import EditBookModal from "./components/EditBookModal"
 // User authentication context
 import { useUser } from "./UserContext"
-// API configuration for backend communication
-import { getApiUrl } from "../config"
 // Toast notifications for user feedback
 import { toast } from "react-hot-toast"
 // Analytics tracking for user interactions
 import { trackEvent, trackError } from "../lib/analytics"
+// Cached API hooks
+import { useUserToRead, useAddToRead, useDeleteToRead, useUpdateToRead, useAddBook } from "../hooks/useApi"
 
 export default function FutureReads() {
     // Get current authenticated user from context
     const user = useUser()
     
+    // Cached data hooks
+    const { data: books = [], isLoading: loading, error: booksError } = useUserToRead()
+    const addToReadMutation = useAddToRead()
+    const deleteToReadMutation = useDeleteToRead()
+    const updateToReadMutation = useUpdateToRead()
+    const addBookMutation = useAddBook()
+    
     // Search and filter state
     const [searchTerm, setSearchTerm] = useState("")  // For filtering books by title/author
-    
-    // Books data and loading states
-    const [books, setBooks] = useState([])           // List of to-read books
-    const [loading, setLoading] = useState(true)     // Initial data loading
-    const [deleting, setDeleting] = useState(null)   // Track which book is being deleted
     
     // Add new book modal state
     const [showAddModal, setShowAddModal] = useState(false)  // Show/hide add book modal
     const [newBook, setNewBook] = useState({ book_name: "", author_name: "" })  // New book form data
-    const [addingBook, setAddingBook] = useState(false)      // Adding book loading state
     
     // Goodreads integration state
     const [goodreadsLinks, setGoodreadsLinks] = useState({})          // Cache of Goodreads URLs
@@ -45,13 +46,11 @@ export default function FutureReads() {
     const [showQuickLog, setShowQuickLog] = useState(false)    // Show/hide quick log modal
     const [selectedBook, setSelectedBook] = useState(null)     // Book selected for quick logging
     const [reflection, setReflection] = useState("")           // Reflection text for quick log
-    const [quickLogLoading, setQuickLogLoading] = useState(false)  // Quick log submission loading
 
     // Share and Edit modals state
     const [showShareModal, setShowShareModal] = useState(false)
     const [showEditModal, setShowEditModal] = useState(false)
     const [selectedBookForModal, setSelectedBookForModal] = useState(null)
-    const [editLoading, setEditLoading] = useState(false)
 
     // Function to generate Goodreads search links for books
     // This creates searchable URLs rather than direct book links
@@ -89,67 +88,30 @@ export default function FutureReads() {
     }
 
     useEffect(() => {
-        async function fetchToReadBooks() {
-            if (!user) return
-            try {
-                const response = await fetch(getApiUrl(`to-read?user_id=${user.id}`))
-                if (!response.ok) {
-                    throw new Error('Failed to fetch to-read books')
-                }
-                const data = await response.json()
-                setBooks(data)
-
-                // Generate Goodreads links for all books
-                data.forEach(book => {
-                    searchGoodreadsLink(book.book_name, book.author_name)
-                })
-
-            } catch (err) {
-                console.error("❌ Failed to fetch to-read books:", err)
-                trackError(err, { userId: user?.id }, 'FutureReads')
-            } finally {
-                setLoading(false)
-            }
+        // Generate Goodreads links for all books when data loads
+        if (books && books.length > 0) {
+            books.forEach(book => {
+                searchGoodreadsLink(book.book_name, book.author_name)
+            })
         }
-
-        fetchToReadBooks()
-    }, [user])
+    }, [books])
 
     const handleDelete = async (book) => {
         if (!confirm("Are you sure you want to remove this book from your future reads? This action cannot be undone.")) {
             return
         }
 
-        const deleteKey = `${book.book_name}-${book.author_name}`
-        setDeleting(deleteKey)
-
         try {
-            const response = await fetch(getApiUrl('to-read/delete'), {
-                method: 'DELETE',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    book_name: book.book_name,
-                    author_name: book.author_name
-                })
+            await deleteToReadMutation.mutateAsync({
+                book_name: book.book_name,
+                author_name: book.author_name
             })
-
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.message || 'Failed to delete book')
-            }
-
-            setBooks(books.filter(b => !(b.book_name === book.book_name && b.author_name === book.author_name)))
             toast.success('Book removed from future reads')
             trackEvent('FutureReads', 'Book Removed')
         } catch (err) {
             console.error("❌ Failed to delete book:", err)
             trackError(err, { userId: user?.id, book_name: book.book_name }, 'FutureReads')
             toast.error('Failed to remove book. Please try again.')
-        } finally {
-            setDeleting(null)
         }
     }
 
@@ -157,38 +119,14 @@ export default function FutureReads() {
         e.preventDefault()
         if (!user || !newBook.book_name.trim() || !newBook.author_name.trim()) return
 
-        setAddingBook(true)
-
         try {
-            const response = await fetch(getApiUrl("to-read/add"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    book_name: newBook.book_name.trim(),
-                    author_name: newBook.author_name.trim(),
-                }),
-            })
-
-            if (!response.ok) {
-                const error = new Error('Failed to add book to future reads')
-                error.status = response.status
-                error.statusText = response.statusText
-                throw error
-            }
-
-            const result = await response.json()
-
-            // Add the new book to the local state
-            const newBookEntry = {
+            await addToReadMutation.mutateAsync({
                 book_name: newBook.book_name.trim(),
                 author_name: newBook.author_name.trim(),
-                created_at: new Date().toISOString()
-            }
-            setBooks([newBookEntry, ...books])
+            })
 
             // Generate Goodreads link for the new book
-            searchGoodreadsLink(newBookEntry.book_name, newBookEntry.author_name)
+            searchGoodreadsLink(newBook.book_name.trim(), newBook.author_name.trim())
 
             toast.success('Book added to future reads! 📚')
             trackEvent('FutureReads', 'Book Added')
@@ -201,12 +139,8 @@ export default function FutureReads() {
                 userId: user?.id,
                 book_name: newBook.book_name,
                 author_name: newBook.author_name,
-                status: err.status,
-                statusText: err.statusText
             }, 'FutureReads')
             toast.error('Failed to add book. Please try again.')
-        } finally {
-            setAddingBook(false)
         }
     }
 
@@ -227,30 +161,19 @@ export default function FutureReads() {
         e.preventDefault()
         if (!user || !selectedBook) return
 
-        setQuickLogLoading(true)
-
         try {
             // Add to read books
-            const response = await fetch(getApiUrl("add"), {
-                method: "POST",
-                headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    book_name: selectedBook.book_name,
-                    author_name: selectedBook.author_name,
-                    reflection: reflection,
-                }),
+            await addBookMutation.mutateAsync({
+                book_name: selectedBook.book_name,
+                author_name: selectedBook.author_name,
+                reflection: reflection,
             })
 
-            if (!response.ok) {
-                const error = new Error('Failed to save book')
-                error.status = response.status
-                error.statusText = response.statusText
-                throw error
-            }
-
             // Remove from future reads
-            await handleDelete(selectedBook)
+            await deleteToReadMutation.mutateAsync({
+                book_name: selectedBook.book_name,
+                author_name: selectedBook.author_name
+            })
 
             toast.success(`"${selectedBook.book_name}" moved to reading history! 📚`, {
                 duration: 3000,
@@ -268,12 +191,8 @@ export default function FutureReads() {
                 userId: user?.id,
                 book_name: selectedBook?.book_name,
                 author_name: selectedBook?.author_name,
-                status: err.status,
-                statusText: err.statusText
             }, 'FutureReads')
             toast.error('Failed to save book. Please try again.')
-        } finally {
-            setQuickLogLoading(false)
         }
     }
 
@@ -300,38 +219,13 @@ export default function FutureReads() {
     const handleEditSave = async (formData) => {
         if (!user || !selectedBookForModal) return
 
-        setEditLoading(true)
-
         try {
-            const response = await fetch(getApiUrl('to-read/update'), {
-                method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                },
-                body: JSON.stringify({
-                    user_id: user.id,
-                    original_book_name: selectedBookForModal.book_name,
-                    original_author_name: selectedBookForModal.author_name,
-                    book_name: formData.book_name.trim(),
-                    author_name: formData.author_name.trim()
-                })
+            await updateToReadMutation.mutateAsync({
+                original_book_name: selectedBookForModal.book_name,
+                original_author_name: selectedBookForModal.author_name,
+                book_name: formData.book_name.trim(),
+                author_name: formData.author_name.trim()
             })
-
-            if (!response.ok) {
-                const errorData = await response.json()
-                throw new Error(errorData.message || 'Failed to update book')
-            }
-
-            // Update the book in local state
-            setBooks(books.map(book => 
-                book.book_name === selectedBookForModal.book_name && book.author_name === selectedBookForModal.author_name
-                    ? { 
-                        ...book, 
-                        book_name: formData.book_name.trim(),
-                        author_name: formData.author_name.trim()
-                    }
-                    : book
-            ))
 
             // Update Goodreads links cache
             const oldKey = `${selectedBookForModal.book_name}-${selectedBookForModal.author_name}`
@@ -348,8 +242,6 @@ export default function FutureReads() {
             console.error("❌ Failed to update book:", err)
             trackError(err, { userId: user?.id, book_name: selectedBookForModal?.book_name }, 'FutureReads')
             toast.error('Failed to update book. Please try again.')
-        } finally {
-            setEditLoading(false)
         }
     }
 
@@ -441,11 +333,11 @@ export default function FutureReads() {
                                                     </button>
                                                     <button
                                                         onClick={() => handleDelete(book)}
-                                                        disabled={deleting === `${book.book_name}-${book.author_name}`}
+                                                        disabled={deleteToReadMutation.isPending}
                                                         className="p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shadow-md border border-slate-300 bg-white"
                                                         title="Remove from future reads"
                                                     >
-                                                        {deleting === `${book.book_name}-${book.author_name}` ? (
+                                                        {deleteToReadMutation.isPending ? (
                                                             <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                                                         ) : (
                                                             <Trash2 className="h-4 w-4" />
@@ -511,7 +403,7 @@ export default function FutureReads() {
                                 <button
                                     onClick={() => setShowAddModal(false)}
                                     className="text-slate-400 hover:text-slate-600"
-                                    disabled={addingBook}
+                                    disabled={addToReadMutation.isPending}
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
@@ -527,7 +419,7 @@ export default function FutureReads() {
                                         onChange={(e) => setNewBook(prev => ({ ...prev, book_name: e.target.value }))}
                                         placeholder="Enter the book title"
                                         required
-                                        disabled={addingBook}
+                                        disabled={addToReadMutation.isPending}
                                     />
                                 </div>
 
@@ -540,7 +432,7 @@ export default function FutureReads() {
                                         onChange={(e) => setNewBook(prev => ({ ...prev, author_name: e.target.value }))}
                                         placeholder="Enter the author's name"
                                         required
-                                        disabled={addingBook}
+                                        disabled={addToReadMutation.isPending}
                                     />
                                 </div>
 
@@ -548,17 +440,17 @@ export default function FutureReads() {
                                     <Button
                                         type="button"
                                         onClick={() => setShowAddModal(false)}
-                                        disabled={addingBook}
+                                        disabled={addToReadMutation.isPending}
                                         className="flex-1 bg-slate-200 hover:bg-slate-300 text-white-800 border border-slate-300"
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         type="submit"
-                                        disabled={addingBook || !newBook.book_name.trim() || !newBook.author_name.trim()}
+                                        disabled={addToReadMutation.isPending || !newBook.book_name.trim() || !newBook.author_name.trim()}
                                         className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
                                     >
-                                        {addingBook ? "Adding..." : "Add Book"}
+                                        {addToReadMutation.isPending ? "Adding..." : "Add Book"}
                                     </Button>
                                 </div>
                             </form>
@@ -577,7 +469,7 @@ export default function FutureReads() {
                                 <button
                                     onClick={closeQuickLog}
                                     className="text-slate-400 hover:text-slate-600"
-                                    disabled={quickLogLoading}
+                                    disabled={addBookMutation.isPending || deleteToReadMutation.isPending}
                                 >
                                     <X className="h-5 w-5" />
                                 </button>
@@ -616,7 +508,7 @@ export default function FutureReads() {
                                         onChange={(e) => setReflection(e.target.value)}
                                         placeholder="Share your thoughts about the book..."
                                         required
-                                        disabled={quickLogLoading}
+                                        disabled={addBookMutation.isPending || deleteToReadMutation.isPending}
                                     />
                                 </div>
 
@@ -624,17 +516,17 @@ export default function FutureReads() {
                                     <Button
                                         type="button"
                                         onClick={closeQuickLog}
-                                        disabled={quickLogLoading}
+                                        disabled={addBookMutation.isPending || deleteToReadMutation.isPending}
                                         className="flex-1 bg-slate-200 hover:bg-slate-300 text-white-800 border border-slate-300"
                                     >
                                         Cancel
                                     </Button>
                                     <Button
                                         type="submit"
-                                        disabled={quickLogLoading || !reflection.trim()}
+                                        disabled={addBookMutation.isPending || deleteToReadMutation.isPending || !reflection.trim()}
                                         className="flex-1 bg-green-600 hover:bg-green-700 text-white"
                                     >
-                                        {quickLogLoading ? "Marking as Read..." : "Mark as Read"}
+                                        {(addBookMutation.isPending || deleteToReadMutation.isPending) ? "Marking as Read..." : "Mark as Read"}
                                     </Button>
                                 </div>
                             </form>
@@ -658,7 +550,7 @@ export default function FutureReads() {
                 onClose={closeShareEditModals}
                 onSave={handleEditSave}
                 includeReflection={false}
-                loading={editLoading}
+                loading={updateToReadMutation.isPending}
             />
         </>
     )

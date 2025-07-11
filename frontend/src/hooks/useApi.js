@@ -79,7 +79,7 @@ export function useUserProfile() {
   })
 }
 
-// Custom hook for fetching AI recommendations with extended caching
+// Custom hook for fetching AI recommendations with controlled caching
 export function useRecommendations() {
   const user = useUser()
   
@@ -95,8 +95,8 @@ export function useRecommendations() {
       return data.recommendations
     },
     enabled: false, // Only fetch when explicitly requested
-    staleTime: 24 * 60 * 60 * 1000, // 24 hours - expensive AI calls
-    gcTime: 7 * 24 * 60 * 60 * 1000, // 7 days
+    staleTime: 0, // Always consider data stale to show loading on refetch
+    gcTime: 3 * 60 * 60 * 1000, // 3 hours cache for background data
   })
 }
 
@@ -190,6 +190,36 @@ export function useDeleteBook() {
   })
 }
 
+// Mutation hook for deleting to-read books
+export function useDeleteToRead() {
+  const queryClient = useQueryClient()
+  const user = useUser()
+  
+  return useMutation({
+    mutationFn: async ({ book_name, author_name }) => {
+      const response = await fetch(getApiUrl('to-read/delete'), {
+        method: 'DELETE',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          book_name,
+          author_name
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to delete to-read book')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userToRead(user?.id) })
+      trackEvent('Books', 'Future Read Deleted')
+    },
+    onError: (error) => {
+      trackError(error, { userId: user?.id }, 'DeleteToRead')
+    }
+  })
+}
+
 // Mutation hook for updating books
 export function useUpdateBook() {
   const queryClient = useQueryClient()
@@ -215,6 +245,35 @@ export function useUpdateBook() {
     },
     onError: (error) => {
       trackError(error, { userId: user?.id }, 'UpdateBook')
+    }
+  })
+}
+
+// Mutation hook for updating to-read books
+export function useUpdateToRead() {
+  const queryClient = useQueryClient()
+  const user = useUser()
+  
+  return useMutation({
+    mutationFn: async (bookData) => {
+      const response = await fetch(getApiUrl('to-read/update'), {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          user_id: user.id,
+          ...bookData
+        })
+      })
+      
+      if (!response.ok) throw new Error('Failed to update to-read book')
+      return response.json()
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: QUERY_KEYS.userToRead(user?.id) })
+      trackEvent('Books', 'Future Read Updated')
+    },
+    onError: (error) => {
+      trackError(error, { userId: user?.id }, 'UpdateToRead')
     }
   })
 }

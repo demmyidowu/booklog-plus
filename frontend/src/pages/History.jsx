@@ -1,7 +1,7 @@
 "use client"
 
 // React hooks for component lifecycle and state management
-import { useEffect, useState } from "react"
+import { useState } from "react"
 // Lucide React icons for UI elements
 import { BookOpen, Search, Calendar, Trash2, Share, Edit } from "lucide-react"
 // Custom UI components
@@ -12,55 +12,27 @@ import ShareModal from "./components/ShareModal"
 import EditBookModal from "./components/EditBookModal"
 // User authentication context
 import { useUser } from "./UserContext"
-// API configuration for backend communication
-import { getApiUrl } from "../config"
 // Toast notifications for user feedback
 import { toast } from "react-hot-toast"
+// Cached API hooks
+import { useUserBooks, useDeleteBook, useUpdateBook } from "../hooks/useApi"
 
 export default function History() {
   // Get current authenticated user from context
   const user = useUser()
   
+  // Cached data hooks
+  const { data: books = [], isLoading: loading, error: booksError } = useUserBooks()
+  const deleteBookMutation = useDeleteBook()
+  const updateBookMutation = useUpdateBook()
+  
   // Search and filter state
   const [searchTerm, setSearchTerm] = useState("")  // For filtering books by title/author
-  
-  // Books data and loading states
-  const [books, setBooks] = useState([])           // User's complete reading history
-  const [loading, setLoading] = useState(true)     // Initial data loading state
-  const [deleting, setDeleting] = useState(null)   // Track which book is being deleted
 
   // Modal states
   const [showShareModal, setShowShareModal] = useState(false)
   const [showEditModal, setShowEditModal] = useState(false)
   const [selectedBook, setSelectedBook] = useState(null)
-  const [editLoading, setEditLoading] = useState(false)
-
-  // Fetch user's reading history when component mounts or user changes
-  useEffect(() => {
-    async function fetchBooks() {
-      // Don't fetch if user is not authenticated
-      if (!user) return
-      
-      try {
-        // Call backend API to get user's book collection
-        const response = await fetch(getApiUrl(`books?user_id=${user.id}`))
-        if (!response.ok) {
-          throw new Error('Failed to fetch books')
-        }
-        
-        // Parse JSON response and update state
-        const data = await response.json()
-        setBooks(data)  // Array of book objects with reflections
-      } catch (err) {
-        console.error("❌ Failed to fetch books:", err)
-        // Could add toast notification here for user feedback
-      } finally {
-        setLoading(false)  // Always stop loading, even on error
-      }
-    }
-
-    fetchBooks()
-  }, [user])  // Re-run when user authentication state changes
 
   // Handle deletion of a book entry from user's history
   const handleDelete = async (book) => {
@@ -69,36 +41,15 @@ export default function History() {
       return
     }
 
-    // Create unique key for tracking deletion state
-    const deleteKey = `${book.book_name}-${book.author_name}`
-    setDeleting(deleteKey)  // Show loading state for this specific book
-
     try {
-      // Send DELETE request to backend API
-      const response = await fetch(getApiUrl('books/delete'), {
-        method: 'DELETE',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: user.id,              // For security - ensure user owns the book
-          book_name: book.book_name,     // Book identification
-          author_name: book.author_name  // Additional identification
-        })
+      await deleteBookMutation.mutateAsync({
+        book_name: book.book_name,
+        author_name: book.author_name
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to delete book')
-      }
-
-      // Remove the book from local state
-      setBooks(books.filter(b => !(b.book_name === book.book_name && b.author_name === book.author_name)))
+      toast.success('Book deleted successfully!')
     } catch (err) {
       console.error("❌ Failed to delete book:", err)
-      alert("Failed to delete book. Please try again.")
-    } finally {
-      setDeleting(null)
+      toast.error("Failed to delete book. Please try again.")
     }
   }
 
@@ -125,48 +76,20 @@ export default function History() {
   const handleEditSave = async (formData) => {
     if (!user || !selectedBook) return
 
-    setEditLoading(true)
-
     try {
-      const response = await fetch(getApiUrl('books/update'), {
-        method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          user_id: user.id,
-          original_book_name: selectedBook.book_name,
-          original_author_name: selectedBook.author_name,
-          book_name: formData.book_name.trim(),
-          author_name: formData.author_name.trim(),
-          reflection: formData.reflection.trim()
-        })
+      await updateBookMutation.mutateAsync({
+        original_book_name: selectedBook.book_name,
+        original_author_name: selectedBook.author_name,
+        book_name: formData.book_name.trim(),
+        author_name: formData.author_name.trim(),
+        reflection: formData.reflection.trim()
       })
-
-      if (!response.ok) {
-        const errorData = await response.json()
-        throw new Error(errorData.message || 'Failed to update book')
-      }
-
-      // Update the book in local state
-      setBooks(books.map(book => 
-        book.book_name === selectedBook.book_name && book.author_name === selectedBook.author_name
-          ? { 
-              ...book, 
-              book_name: formData.book_name.trim(),
-              author_name: formData.author_name.trim(),
-              reflection: formData.reflection.trim()
-            }
-          : book
-      ))
 
       toast.success('Book updated successfully!')
       closeModals()
     } catch (err) {
       console.error("❌ Failed to update book:", err)
       toast.error('Failed to update book. Please try again.')
-    } finally {
-      setEditLoading(false)
     }
   }
 
@@ -238,11 +161,11 @@ export default function History() {
                       </button>
                       <button
                         onClick={() => handleDelete(book)}
-                        disabled={deleting === `${book.book_name}-${book.author_name}`}
+                        disabled={deleteBookMutation.isPending}
                         className="p-2 text-slate-700 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50 shadow-md border border-slate-300 bg-white"
                         title="Delete book entry"
                       >
-                        {deleting === `${book.book_name}-${book.author_name}` ? (
+                        {deleteBookMutation.isPending ? (
                           <div className="h-4 w-4 border-2 border-red-500 border-t-transparent rounded-full animate-spin" />
                         ) : (
                           <Trash2 className="h-4 w-4" />
@@ -284,7 +207,7 @@ export default function History() {
         onClose={closeModals}
         onSave={handleEditSave}
         includeReflection={true}
-        loading={editLoading}
+        loading={updateBookMutation.isPending}
       />
     </div>
   )

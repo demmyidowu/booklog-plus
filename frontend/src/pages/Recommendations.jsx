@@ -18,20 +18,17 @@ import { toast } from "react-hot-toast"
 // Quiz hook
 import { useQuiz } from "../hooks/useQuiz"
 // Cached API hooks
-import { useUserBooks, useRecommendations, useAddBook, useAddToRead, QUERY_KEYS } from "../hooks/useApi"
-// React Query for cache invalidation
-import { useQueryClient } from '@tanstack/react-query'
+import { useUserBooks, useRecommendations, useAddBook, useAddToRead } from "../hooks/useApi"
 
 
 export default function Recommendations() {
   // Get current authenticated user from context
   const user = useUser()
   const { quizCompleted, showQuizModal } = useQuiz()
-  const queryClient = useQueryClient()
   
   // Cached data hooks
   const { data: books = [], isLoading: booksLoading } = useUserBooks()
-  const { data: recommendations = [], isLoading: recommendationsLoading, isFetching: recommendationsFetching, error, refetch: fetchRecommendations } = useRecommendations()
+  const { data: recommendations = [], isLoading: recommendationsLoading, error, refetch: fetchRecommendations } = useRecommendations()
   const addBookMutation = useAddBook()
   const addToReadMutation = useAddToRead()
   
@@ -56,12 +53,6 @@ export default function Recommendations() {
     
     setHasRequested(true)
     try {
-      // Remove the cached data completely to force fresh recommendations
-      queryClient.removeQueries({ 
-        queryKey: QUERY_KEYS.recommendations(user.id) 
-      })
-      
-      // Then fetch fresh data
       await fetchRecommendations()
       trackEvent('Recommendations', 'Recommendations Fetched Successfully')
     } catch (err) {
@@ -285,10 +276,10 @@ export default function Recommendations() {
             <div className="text-center mt-8">
               <Button
                 onClick={handleFetchRecommendations}
-                disabled={recommendationsFetching}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {recommendationsFetching ? (
+                {recommendationsLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Getting More Recommendations...
@@ -335,10 +326,10 @@ export default function Recommendations() {
                     </p>
                     <Button
                       onClick={handleFetchRecommendations}
-                      disabled={recommendationsFetching}
+                      disabled={recommendationsLoading}
                       className="bg-purple-600 hover:bg-purple-700 text-white"
                     >
-                      {recommendationsFetching ? (
+                      {recommendationsLoading ? (
                         <>
                           <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                           Finding your perfect books...
@@ -361,7 +352,7 @@ export default function Recommendations() {
               <p className="text-red-600 mb-4">Error: {error}</p>
               <Button
                 onClick={handleFetchRecommendations}
-                disabled={recommendationsFetching}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
                 Try Again
@@ -447,10 +438,10 @@ export default function Recommendations() {
             <div className="text-center mt-8">
               <Button
                 onClick={handleFetchRecommendations}
-                disabled={recommendationsFetching}
+                disabled={recommendationsLoading}
                 className="bg-blue-600 hover:bg-blue-700 text-white"
               >
-                {recommendationsFetching ? (
+                {recommendationsLoading ? (
                   <>
                     <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
                     Getting New Recommendations...

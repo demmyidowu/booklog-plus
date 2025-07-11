@@ -110,7 +110,7 @@ def get_recommendations(past_entries: list, to_read: list, debug: bool = False, 
             {"role": "system", "content": instruction},  # AI role and behavior
             {"role": "user", "content": inputPrompt}  # User's reading data
         ],
-        temperature=0.7,  # Balance between creativity (1.0) and consistency (0.0)
+        temperature=0.85,  # Balance between creativity (1.0) and consistency (0.0)
         max_tokens=300    # Limit response length to control costs and response time
     )
     
